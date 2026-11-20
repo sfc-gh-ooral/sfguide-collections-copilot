@@ -11,9 +11,9 @@ import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Too
 import { AiMeta, AiPanel, Reasoning, Sources, StreamText } from '@/components/Reasoning';
 import { ACTION_NAME, AXIS, BAND, BAND_SHORT, CHANNEL, ChartTip, ErrorBox, OFFER, OUTCOME, PageSkeleton, Panel, PoweredBy, REACHED, SourceChip, Tag, pct0, riskTone, usd } from '@/components/ui';
 import { useAsync } from '@/components/useAsync';
-import { STORY_ACCOUNTS, fetchAccount, fetchGuide, sendAction } from '@/lib/client';
+import { STORY_ACCOUNTS, fetchAccount, fetchGuide, rescore, sendAction } from '@/lib/client';
 import { type ActionInput, TODAY } from '@/lib/rules';
-import type { AccountDetail, AiText } from '@/lib/types';
+import type { AccountDetail, AiText, Rescore } from '@/lib/types';
 
 const describe = (a: { ACTION: string; DETAIL: string }) => {
   const d = JSON.parse(a.DETAIL);
@@ -23,6 +23,23 @@ const describe = (a: { ACTION: string; DETAIL: string }) => {
 };
 const BANDS = ['MORNING', 'AFTERNOON', 'EVENING'];
 const CHANNELS = ['CALL', 'SMS', 'EMAIL'];
+
+function RescorePanel({ id }: { id: string }) {
+  const [r, setR] = useState<Rescore | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const run = () => { setBusy(true); setErr(''); rescore(id).then(setR).catch((e) => setErr(String(e.message ?? e))).finally(() => setBusy(false)); };
+  return (
+    <Panel title="Roll-risk model" sub="The queue uses the batch score from setup. Run the model on this account now." right={<PoweredBy>Model Registry · PREDICT_PROBA</PoweredBy>}>
+      <button className="btn btn-primary" onClick={run} disabled={busy}>{busy ? 'Scoring…' : 'Re-score now'}</button>
+      {err && <div className="mt-3"><ErrorBox error={err} /></div>}
+      {r && <div className="mt-3 text-sm space-y-1">
+        <p><strong className="display text-lg tabular">{pct0(r.score)}</strong> roll risk from {r.model}{r.stored !== null && <> · batch score {pct0(r.stored)}</>}</p>
+        <p className="text-[11px] muted">{r.source === 'live' ? `Live inference in ${(r.ms / 1000).toFixed(1)} s` : 'Sample run: replays the captured batch score'} · <span className="mono break-all">{r.sql}</span></p>
+      </div>}
+    </Panel>
+  );
+}
 
 function Heatmap({ c }: { c: AccountDetail }) {
   const q = c.queue;
@@ -276,6 +293,7 @@ function AccountView() {
 
         <div className="space-y-4 xl:sticky xl:top-20 min-w-0">
           <Guide c={c.data} />
+          {q && <RescorePanel key={`score-${a.ACCOUNT_ID}`} id={a.ACCOUNT_ID} />}
           <Panel title="Contact-frequency limit">
             <div className="flex items-end justify-between">
               <div className="display text-[30px] font-bold tabular leading-none">{used}<span className="text-base muted font-medium"> of {limit.limit} calls</span></div>

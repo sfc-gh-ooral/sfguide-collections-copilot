@@ -54,3 +54,4 @@ export interface QaList {
 export interface QaDetail { row: QaRow; transcript: string; coaching: string | null; ms: number; source: Source }
 
 export interface AiText { text: string; latencyMs: number; model: string; source: 'live' | 'sample'; sql?: string; flags?: string[] }
+export interface Rescore { score: number; stored: number | null; model: string; ms: number; source: 'live' | 'sample'; sql: string }

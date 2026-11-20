@@ -2,7 +2,7 @@
 // All inputs are validated and passed as bind variables.
 import { COMPLETE_MODEL, query } from '@/lib/snowflake';
 import { type ActionInput, checkAction, riskOf } from '@/lib/rules';
-import type { AccountDetail, AiText, Overview, Program, QaDetail, QaList, Queue, QueueRow } from '@/lib/types';
+import type { AccountDetail, AiText, Overview, Program, QaDetail, QaList, Queue, QueueRow, Rescore } from '@/lib/types';
 
 const DB = 'COLLECTIONS_COPILOT';
 
@@ -229,4 +229,18 @@ export async function askAgent(question: string): Promise<AiText> {
   const text = parts.filter(Boolean).join('\n\n');
   if (!text) throw new Error('The Cortex Agent returned no text. Check that sql/setup.sql ran.');
   return { text, sql, latencyMs: Date.now() - t0, model: 'Cortex Agent (orchestration: auto)', source: 'live' };
+}
+
+const SCORE_COLS = ['DPD', 'PAST_DUE', 'BALANCE', 'CREDIT_SCORE', 'IS_AUTO', 'PRIOR_DELINQ_12M', 'PROMISES_MADE', 'PROMISES_BROKEN',
+  'PROMISES_KEPT', 'ATTEMPTS_30D', 'REACH_RATE_30D', 'CALLS_7D', 'DAYS_SINCE_PAYMENT'];
+/** Runs the registered model live for one account: ROLL_RISK_XGB!PREDICT_PROBA over its current features. */
+export async function rescoreAccount(id: string): Promise<Rescore> {
+  const t0 = Date.now();
+  const sql = `SELECT ML.ROLL_RISK_XGB!PREDICT_PROBA(${SCORE_COLS.map((c) => 'f.' + c).join(', ')}):output_feature_1::FLOAT AS P,
+    s.ROLL_RISK::FLOAT AS STORED
+    FROM ML.ACCOUNT_FEATURES f LEFT JOIN ML.SCORES s ON s.ACCOUNT_ID = f.ACCOUNT_ID WHERE f.PURPOSE = 'SCORE' AND f.ACCOUNT_ID = ?`;
+  const r = await query<{ P: number; STORED: number | null }>(sql, [id]);
+  if (!r[0]) throw new Error(`${id} has no scoring features for today`);
+  return { score: Number(r[0].P), stored: r[0].STORED === null ? null : Number(r[0].STORED), model: 'ML.ROLL_RISK_XGB (default version)',
+    ms: Date.now() - t0, source: 'live', sql: 'ML.ROLL_RISK_XGB!PREDICT_PROBA(' + SCORE_COLS.join(', ') + ')' };
 }

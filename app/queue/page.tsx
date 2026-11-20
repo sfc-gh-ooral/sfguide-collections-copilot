@@ -92,7 +92,7 @@ function QueueView() {
     <div className="space-y-5">
       <PageBand eyebrow="Monday, Nov 16, 2026 · morning shift" title="Today's queue"
         sub="Loans 1 to 59 days past due, ranked by expected recovery (past due × reach rate) × roll risk, with the channel and hour each borrower answers."
-        chips={<><PoweredBy onBand>Dynamic Table · APP.TODAY_QUEUE</PoweredBy><PoweredBy onBand>Snowpark ML scores</PoweredBy><SourceChip onBand ms={q.data?.ms} source={q.data?.source} /></>} />
+        chips={<><PoweredBy onBand>Dynamic Table · APP.TODAY_QUEUE</PoweredBy><PoweredBy onBand>Batch-scored · Model Registry</PoweredBy><SourceChip onBand ms={q.data?.ms} source={q.data?.source} /></>} />
 
       <div className="relative z-10 grid sm:grid-cols-3 gap-3 px-2 sm:px-3">
         {STORY_ACCOUNTS.map((c, i) => {

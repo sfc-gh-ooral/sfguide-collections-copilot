@@ -8,7 +8,7 @@ import { HOSTED_EXAMPLE } from '@/lib/hosted';
 import { preferSample } from '@/lib/mode';
 import { type ActionInput, checkAction } from '@/lib/rules';
 import { SAMPLE_DELAY_MS } from '@/lib/sample-timing';
-import type { AccountDetail, AiText, Overview, QaDetail, QaList, Queue } from '@/lib/types';
+import type { AccountDetail, AiText, Overview, QaDetail, QaList, Queue, Rescore } from '@/lib/types';
 
 interface SampleBundle {
   capturedAt: string; overview: Overview; queues: Record<string, Queue>; accounts: Record<string, AccountDetail>;
@@ -120,4 +120,14 @@ export async function ask(question: string): Promise<AiText> {
   await wait(jitter(SAMPLE_DELAY_MS.ask));
   if (!hit) return { text: 'This hosted example only has scripted answers for the suggested questions. Pick one of them, or run Live mode to ask the Cortex Agent anything about the accounts and promises.', latencyMs: 0, model: 'scripted', source: 'sample' };
   return { text: hit.text, latencyMs: 0, model: 'scripted', source: 'sample' };
+}
+
+/** Re-scores one account with the registered model. Sample mode replays the batch score with a short delay, labeled as a sample run. */
+export async function rescore(id: string): Promise<Rescore> {
+  if (await isLive()) return api(`/api/rescore?id=${encodeURIComponent(id)}`, { method: 'POST' });
+  const q = S.accounts[id]?.queue;
+  if (!q) throw new Error('This account has no score in the bundled sample.');
+  await wait(1200);
+  return { score: q.ROLL_RISK, stored: q.ROLL_RISK, model: 'ML.ROLL_RISK_XGB (default version)', ms: 0, source: 'sample',
+    sql: 'ML.ROLL_RISK_XGB!PREDICT_PROBA(DPD, PAST_DUE, BALANCE, CREDIT_SCORE, IS_AUTO, PRIOR_DELINQ_12M, PROMISES_MADE, PROMISES_BROKEN, PROMISES_KEPT, ATTEMPTS_30D, REACH_RATE_30D, CALLS_7D, DAYS_SINCE_PAYMENT)' };
 }

@@ -424,7 +424,7 @@ COLS = ['DPD', 'PAST_DUE', 'BALANCE', 'CREDIT_SCORE', 'IS_AUTO', 'PRIOR_DELINQ_1
         'PROMISES_KEPT', 'ATTEMPTS_30D', 'REACH_RATE_30D', 'CALLS_7D', 'DAYS_SINCE_PAYMENT']
 
 def run(session):
-    df = session.sql("SELECT *, MOD(ABS(HASH(ACCOUNT_ID, 'split')), 4) AS FOLD FROM COLLECTIONS_COPILOT.ML.ACCOUNT_FEATURES WHERE PURPOSE = 'TRAIN'").to_pandas()
+    df = session.sql("SELECT *, MOD(ABS(HASH(ACCOUNT_ID, 'split')), 4) AS FOLD FROM COLLECTIONS_COPILOT.ML.ACCOUNT_FEATURES WHERE PURPOSE = 'TRAIN' ORDER BY ACCOUNT_ID, SNAP_DATE").to_pandas()
     train, test = df[df.FOLD != 0], df[df.FOLD == 0]  # hold out a quarter of accounts
     clf = xgb.XGBClassifier(max_depth=4, learning_rate=0.08, n_estimators=250, subsample=0.9, colsample_bytree=0.9,
                             min_child_weight=5, random_state=7, n_jobs=1, eval_metric='auc')

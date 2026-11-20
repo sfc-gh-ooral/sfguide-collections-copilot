@@ -168,7 +168,7 @@ export default function Portfolio() {
       </div>
 
       <Panel title={`Roll-risk model · ${o.registry.name} ${o.registry.version}`} sub={`Predicts: ${o.model.label}`}
-        right={<><PoweredBy>Snowpark ML (XGBoost)</PoweredBy><PoweredBy>Model Registry</PoweredBy></>}>
+        right={<><PoweredBy>Trained with Snowpark ML</PoweredBy><PoweredBy>Model Registry · batch scores</PoweredBy></>}>
         <div className="grid md:grid-cols-3 gap-5 text-sm">
           <div className="space-y-3">
             <div className="flex gap-6">

@@ -80,7 +80,7 @@ function QaView() {
   return (
     <div className="space-y-5">
       <PageBand eyebrow="Quality assurance · Oct 1 to Nov 15" title="Call QA"
-        sub="Every reviewed call is checked for the debt collection disclosure and for agent conduct, with a coaching note for each flagged call."
+        sub="Every reviewed call is checked for the debt collection disclosure and for agent conduct, with a coaching note for each flagged call. The list and KPIs were reviewed in setup; “Review this call again” runs AI_CLASSIFY and AI_COMPLETE now."
         chips={<><PoweredBy onBand>AI_CLASSIFY</PoweredBy><PoweredBy onBand>AI_COMPLETE</PoweredBy><SourceChip onBand ms={d.ms} source={d.source} /></>} />
       <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3 px-2 sm:px-3">
         <Kpi label="Calls reviewed" value={d.reviewed} format={fmtInt} sub="transcript snippets" />

@@ -9,8 +9,8 @@ A collections app on Snowflake for a fictional consumer lender, Northwind Financ
 | Screen | What the collector does | Snowflake capability |
 | --- | --- | --- |
 | Portfolio | Reads loans by days-past-due (DPD) bucket, the delinquency trend, roll and cure rates, and the promise-kept rate | Snowflake SQL, Dynamic Tables, Model Registry metadata |
-| Today's queue | Works accounts ranked by expected recovery × roll risk, with the best channel and time, a suggested offer, and calls used against the limit | Snowpark ML (XGBoost) scores, the `TODAY_QUEUE` dynamic table |
-| Account view | Reads the history, reach rate by channel and time, hardship eligibility, and contact-limit tracking; drafts a conversation guide with AI; logs a promise, requests a hardship enrollment, or schedules a contact | Cortex `AI_COMPLETE`, Dynamic Tables |
+| Today's queue | Works accounts ranked by expected recovery × roll risk, with the best channel and time, a suggested offer, and calls used against the limit | Batch scores from an XGBoost model trained with Snowpark ML and served from the Model Registry, the `TODAY_QUEUE` dynamic table |
+| Account view | Reads the history, reach rate by channel and time, hardship eligibility, and contact-limit tracking; drafts a conversation guide with AI; logs a promise, requests a hardship enrollment, or schedules a contact; re-scores the account live with the registered model | Cortex `AI_COMPLETE`, Model Registry inference (`ROLL_RISK_XGB!PREDICT_PROBA`), Dynamic Tables |
 | Call QA | Reviews transcript compliance flags and coaching notes, by flag type and agent; re-reviews a call on demand | Cortex `AI_CLASSIFY` (multi-label), `AI_COMPLETE` |
 | Ask | Asks questions such as "Which accounts broke promises twice this month?" | Cortex Agents with Cortex Analyst over a semantic view |
 
@@ -68,7 +68,7 @@ Run [`sql/cleanup.sql`](sql/cleanup.sql). It drops the agent, the database (and 
 
 ## Expected cost and time
 
-- **Setup:** about 2.5 minutes on the XSMALL warehouse, measured end to end (data generation, three dynamic tables, model training and registration, scoring, and AI review of 381 transcripts).
+- **Setup:** about 2.5 minutes (2 minutes 36 seconds in the November 20, 2026 run) on the XSMALL warehouse, measured end to end (data generation, three dynamic tables, model training and registration, scoring, and AI review of 381 transcripts).
 - **Measured warehouse credits:** 0.83 credits in total for two full setup runs, a Live walkthrough of every screen, and the capture of the sample bundle (107 account views and guides, 33 transcript reviews, three agent questions), from `WAREHOUSE_METERING_HISTORY`. A single setup and walkthrough uses less.
 - **AI tokens** are billed separately: setup makes 381 `AI_CLASSIFY` calls and one `AI_COMPLETE` call per flagged transcript (33 on this data). In the app, a conversation guide took about 7 seconds, a re-review about 7 seconds, and an agent question 10 to 30 seconds.
 - **Idle cost:** none while the warehouse is suspended. The dynamic tables refresh once a day if you leave them; run cleanup when you're done.
@@ -76,8 +76,8 @@ Run [`sql/cleanup.sql`](sql/cleanup.sql). It drops the agent, the database (and 
 ## Known limitations
 
 - **Illustrative rules.** The 7-calls-in-7-days limit, the hardship eligibility rules, and the offer logic are examples. They don't encode any federal, state, or product rule. Replace them before relying on the queue.
-- **Scoring is batch.** Roll risk is scored once for the business date in `RAW.CONFIG` (frozen at Monday, Nov 16, 2026, so Sample and Live match). The task can rescore daily once resumed; intraday rescoring after a call is not built.
-- **One model.** Roll risk is a single XGBoost model (test AUC 0.77 on this synthetic data). Contact propensity is an empirical, smoothed reach rate per channel and time of day, not a trained model.
+- **The queue uses batch scores.** Setup scores every account once for the business date in `RAW.CONFIG` (frozen at Monday, Nov 16, 2026, so Sample and Live match), and the queue ranks on those scores. **Re-score now** on the account view runs `ML.ROLL_RISK_XGB!PREDICT_PROBA` live on that account's features and shows the result next to the batch score; it doesn't rewrite the queue. Measured live on November 20, 2026: 17 to 22 seconds per account on the XSMALL warehouse (the model runs as a warehouse UDF), and the live score equaled the batch score for every account tried. `SCORE_ACCOUNTS_TASK` is created suspended; `ALTER TASK ... RESUME` to rescore daily. In Sample mode the button replays the captured batch score and is labeled a sample run.
+- **One model.** Roll risk is a single XGBoost model (test AUC 0.775 on this synthetic data; training reads rows in a fixed order, so a rerun gives the same model). Contact propensity is an empirical, smoothed reach rate per channel and time of day, not a trained model.
 - **Disclosure check is a phrase rule.** In testing, `AI_CLASSIFY` was unreliable at spotting a missing disclosure (an absence), so a phrase rule checks for it and `AI_CLASSIFY` reviews conduct only. Flags are for human review, not a legal finding.
 - **Queue updates on refresh.** Actions are recorded in `APP.ACCOUNT_ACTIONS` and shown on the account; they don't change the queue ranking until the next refresh. Hardship enrollments are requests pending review, not enrollments.
 - **Transcripts are short synthetic snippets** assembled from template lines, so QA accuracy on real calls will differ.

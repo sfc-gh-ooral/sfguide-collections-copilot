@@ -125,7 +125,7 @@ export function ErrorBox({ error }: { error: string }) {
   return (
     <div role="alert" className="panel p-4 text-sm flex gap-3 items-start" style={{ borderColor: 'var(--roll)' }}>
       <AlertTriangle className="w-4 h-4 mt-0.5 flex-none" style={{ color: 'var(--roll)' }} aria-hidden />
-      <div><strong style={{ color: 'var(--roll)' }}>Live call failed.</strong> <span className="muted">{error}</span></div>
+      <div><strong style={{ color: 'var(--roll)' }}>Couldn’t load this.</strong> <span className="muted">{error}</span></div>
     </div>
   );
 }
