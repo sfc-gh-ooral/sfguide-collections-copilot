@@ -28,8 +28,8 @@ promise, and rise with responsiveness. That is the signal the roll-risk model le
 
 1. **Evening texters called at 10am.** 240 borrowers (`L019001` to `L019240`) answer texts in the evening
    but get mostly 10am calls. `L019001` was called 22 times in the morning and reached once, and answered
-   4 of 4 evening texts. In the queue, 249 accounts have a best plan of an evening text while their usual
-   attempt is a morning call: 207 of the planted 240 (the rest had too few texts to stand out) and 42
+   4 of 4 evening texts. In the queue, 245 accounts have a best plan of an evening text while their usual
+   attempt is a morning call: 207 of the planted 240 (the rest had too few texts to stand out) and 38
    other borrowers with the same pattern by chance.
 2. **Broken promises predict a roll.** 150 borrowers (`L018001` to `L018150`) broke two promises due
    Nov 3 and Nov 10. Across training snapshots, 97% of episodes with 2+ broken promises reached 60+ DPD,
