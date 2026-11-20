@@ -1,13 +1,15 @@
 'use client';
 
-// App frame: navigation, the Sample/Live switch, mode notice, and the disclaimer.
-import { Bot, HandCoins, LayoutDashboard, ListChecks, Menu, ShieldCheck, X } from 'lucide-react';
+// Calvessa app frame: top bar with logo, tabs, the shift board, the role chip, the Sample/Live
+// environment badge and a theme toggle; a sample-mode notice; and the disclaimer footer.
+import { Bot, LayoutDashboard, ListChecks, Moon, ShieldCheck, Sun } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { LogoMark } from '@/components/Logo';
 import { ModeChip } from '@/components/ModeChip';
+import { fetchOverview } from '@/lib/client';
 import { HOSTED_EXAMPLE } from '@/lib/hosted';
-
 
 const NAV = [
   { href: '/', label: 'Portfolio', icon: LayoutDashboard },
@@ -16,69 +18,90 @@ const NAV = [
   { href: '/ask', label: 'Ask', icon: Bot },
 ];
 
-export default function Shell({ children }: { children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const pathname = usePathname();
-  useEffect(() => setOpen(false), [pathname]);
-  // Mobile drawer: Escape closes, focus moves into the drawer on open and back to the toggle on close.
-  const toggleRef = useRef<HTMLButtonElement>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
-  const wasOpen = useRef(false);
+function ThemeToggle() {
+  const [dark, setDark] = useState<boolean>();
   useEffect(() => {
-    if (open) closeRef.current?.focus();
-    else if (wasOpen.current) toggleRef.current?.focus();
-    wasOpen.current = open;
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
-  const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href) || (href === '/queue' && pathname.startsWith('/account')));
-  const title = pathname.startsWith('/account') ? 'Account view' : NAV.find((n) => active(n.href))?.label ?? 'Portfolio';
-
+    const t = document.documentElement.dataset.theme;
+    setDark(t ? t === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches);
+  }, []);
+  if (dark === undefined) return <span className="w-9" />;
+  const flip = () => { const next = dark ? 'light' : 'dark'; document.documentElement.dataset.theme = next; localStorage.setItem('cc-theme', next); setDark(!dark); };
   return (
-    <div className="min-h-screen flex">
-      <aside id="main-nav" className={`sidebar fixed inset-y-0 left-0 z-40 w-60 flex flex-col border-r md:translate-x-0 md:visible ${open ? 'translate-x-0 transition-transform' : '-translate-x-full invisible transition-[transform,visibility]'}`}
-        aria-label="Main navigation">
-        <div className="px-5 py-5 border-b flex items-center gap-3" style={{ borderColor: 'rgba(255,255,255,.08)' }}>
-          <div className="icon-tile w-9 h-9 rounded-xl flex items-center justify-center"><HandCoins className="w-4 h-4" aria-hidden /></div>
-          <div>
-            <div className="text-sm font-semibold leading-tight text-white">Collections Copilot</div>
-            <div className="text-[11px] muted">Example on synthetic data</div>
-          </div>
-          <button ref={closeRef} className="md:hidden ml-auto btn !px-2" onClick={() => setOpen(false)} aria-label="Close menu"><X className="w-4 h-4" /></button>
+    <button className="btn !p-2" onClick={flip} aria-label={dark ? 'Switch to light theme' : 'Switch to dark theme'} title="Theme">
+      {dark ? <Sun className="w-4 h-4" aria-hidden /> : <Moon className="w-4 h-4" aria-hidden />}
+    </button>
+  );
+}
+
+/** Today's shift at a glance: queue size, accounts needing a channel change, and flagged calls. */
+function ShiftBoard() {
+  const [s, setS] = useState<{ queue: number; evening: number; flagged: number }>();
+  useEffect(() => { fetchOverview().then((o) => setS({ queue: o.kpis.queue, evening: o.stories.eveningTexters, flagged: o.stories.flaggedCalls }), () => {}); }, []);
+  if (!s) return null;
+  const item = (n: number, label: string, href: string, color: string) => (
+    <Link href={href} className="flex flex-col leading-tight no-underline px-3 border-l first:border-l-0" style={{ borderColor: 'var(--line)' }}>
+      <span className="display text-[15px] font-bold tabular" style={{ color }}>{n.toLocaleString()}</span>
+      <span className="text-[10.5px] muted whitespace-nowrap">{label}</span>
+    </Link>
+  );
+  return (
+    <div className="hidden xl:flex items-center rounded-xl py-1.5" style={{ background: 'var(--surface-2)' }} aria-label="Shift board">
+      {item(s.queue, 'in today’s queue', '/queue/', 'var(--dusk)')}
+      {item(s.evening, 'better by evening text', '/queue/?filter=EVENING_SMS', 'var(--ember)')}
+      {item(s.flagged, 'calls flagged in QA', '/qa/', 'var(--roll)')}
+    </div>
+  );
+}
+
+export default function Shell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const active = (href: string) => (href === '/' ? pathname === '/' : pathname.startsWith(href) || (href === '/queue' && pathname.startsWith('/account')));
+  return (
+    <div className="min-h-screen flex flex-col">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 btn z-50">Skip to content</a>
+      {HOSTED_EXAMPLE && (
+        <div role="note" className="px-4 md:px-8 py-2 text-xs tone-sample" style={{ borderRadius: 0 }}>
+          <strong>Sample data mode.</strong> Runs in your browser on synthetic data captured from a live run; no Snowflake account needed. AI answers are scripted samples, not live Cortex output.{' '}
+          <a href="https://github.com/sfc-gh-ooral/sfguide-collections-copilot" className="underline underline-offset-2 font-semibold">Run it in your own account</a>
         </div>
-        <nav className="flex-1 px-3 py-3 space-y-1">
+      )}
+      <header className="sticky top-0 z-40 border-b" style={{ background: 'var(--surface)', borderColor: 'var(--line)' }}>
+        <div className="max-w-[1440px] mx-auto px-4 md:px-6 h-16 flex items-center gap-4">
+          <Link href="/" className="flex items-center gap-2.5 no-underline flex-none">
+            <LogoMark size={34} />
+            <span className="leading-tight">
+              <span className="display block text-[16px] font-bold">Calvessa</span>
+              <span className="block text-[10.5px] muted -mt-0.5">Recovery Desk</span>
+            </span>
+          </Link>
+          <nav className="tabs hidden lg:flex ml-2" aria-label="Main">
+            {NAV.map(({ href, label, icon: Icon }) => (
+              <Link key={href} href={href} className="tab" aria-current={active(href) ? 'page' : undefined}><Icon className="w-4 h-4" aria-hidden />{label}</Link>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <ShiftBoard />
+            <div className="hidden md:flex items-center gap-2 rounded-full pl-1 pr-3 py-1 border" style={{ borderColor: 'var(--line)' }} title="Fictional user">
+              <span className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: 'var(--ember)', color: 'var(--surface)' }}>DO</span>
+              <span className="leading-tight"><span className="block text-xs font-semibold">Dana Okafor</span><span className="block text-[10.5px] muted">Collections lead</span></span>
+            </div>
+            <ModeChip />
+            <ThemeToggle />
+          </div>
+        </div>
+        <nav className="tabs lg:hidden px-3 pb-2" aria-label="Main (compact)">
           {NAV.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href} aria-current={active(href) ? 'page' : undefined}
-              className="nav-link flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium no-underline">
-              <Icon className="w-4 h-4" aria-hidden />{label}
-            </Link>
+            <Link key={href} href={href} className="tab" aria-current={active(href) ? 'page' : undefined}><Icon className="w-4 h-4" aria-hidden />{label}</Link>
           ))}
         </nav>
-        <div className="px-4 py-4 border-t text-[11px] muted leading-relaxed" style={{ borderColor: 'rgba(255,255,255,.08)' }}>
-          Synthetic data and illustrative logic. Not a production collections system, and not legal, regulatory, or compliance advice. Contact rules are illustrative. Results describe this synthetic data set only.
+      </header>
+      <main id="main" key={pathname} className="rise flex-1 w-full max-w-[1440px] mx-auto px-3 sm:px-4 md:px-6 py-5">{children}</main>
+      <footer className="border-t text-[11.5px] muted" style={{ borderColor: 'var(--line)' }}>
+        <div className="max-w-[1440px] mx-auto px-4 md:px-6 py-4 flex flex-wrap gap-x-6 gap-y-1 justify-between">
+          <span>Calvessa and Northwind Financial are fictional. Synthetic data and illustrative logic: not a production collections system, and not legal, regulatory or compliance advice. Contact rules are illustrative.</span>
+          <span>Business date Mon Nov 16, 2026 · Built on Snowflake</span>
         </div>
-      </aside>
-
-      <div className="flex-1 md:ml-60 min-w-0">
-        {HOSTED_EXAMPLE && (
-          <div role="note" className="px-4 md:px-8 py-2 text-xs border-b" style={{ background: 'var(--sample-soft)', borderColor: 'var(--border)', color: 'var(--text-2)' }}>
-            <strong style={{ color: 'var(--text)' }}>Sample data mode.</strong> Runs entirely in your browser on synthetic data captured from a live run; no Snowflake account needed. AI answers are scripted samples, not live Cortex output.{' '}
-            <a href="https://github.com/sfc-gh-ooral/sfguide-collections-copilot" className="underline underline-offset-2">Run it in your own account</a>
-          </div>
-        )}
-        <header className="sticky top-0 z-30 flex items-center gap-3 px-4 md:px-8 py-3 border-b" style={{ borderColor: 'var(--border)' }}>
-          <button ref={toggleRef} className="md:hidden btn !px-2" onClick={() => setOpen(true)} aria-label="Open menu" aria-expanded={open} aria-controls="main-nav"><Menu className="w-4 h-4" /></button>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold truncate">{title}</div>
-            <div className="text-xs muted truncate">Northwind Financial · consumer collections · business date Mon Nov 16, 2026</div>
-          </div>
-          <div className="ml-auto"><ModeChip /></div>
-        </header>
-        <main key={pathname} className="fade-up px-4 md:px-8 py-6 max-w-[1400px]">{children}</main>
-      </div>
-      {open && <div className="fixed inset-0 z-30 bg-black/40 md:hidden" onClick={() => setOpen(false)} aria-hidden />}
+      </footer>
     </div>
   );
 }

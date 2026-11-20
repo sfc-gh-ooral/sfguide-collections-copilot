@@ -1,30 +1,109 @@
 'use client';
 
-// Account view: delinquency history, the contact plan from the borrower's own response history,
-// hardship eligibility, contact-limit tracking, an AI conversation guide, and the collector's
-// actions (log a promise, request a hardship enrollment, schedule a contact).
-import { Sparkles } from 'lucide-react';
+// Account workspace: the borrower's reach heatmap (channel x time of day), DPD history, one timeline
+// of payments, promises, contacts and calls, hardship eligibility, contact-limit tracking, the AI
+// conversation guide, and the collector's actions (log a promise, request hardship, schedule).
+import { ArrowLeft, CalendarClock, CircleDollarSign, HandHeart, MessageSquareText, Phone, Mail, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Suspense, useEffect, useRef, useState } from 'react';
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { Reasoning } from '@/components/Reasoning';
-import { ACTION_NAME, BAND, BAND_SHORT, CHANNEL, Card, ErrorBox, Markdown, OFFER, OUTCOME, PoweredBy, SampleAiBadge, SourceChip, Tag, Thinking, pct0, riskTone, usd } from '@/components/ui';
+import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { AiMeta, AiPanel, Reasoning, Sources, StreamText } from '@/components/Reasoning';
+import { ACTION_NAME, AXIS, BAND, BAND_SHORT, CHANNEL, ChartTip, ErrorBox, OFFER, OUTCOME, PageSkeleton, Panel, PoweredBy, REACHED, SourceChip, Tag, pct0, riskTone, usd } from '@/components/ui';
 import { useAsync } from '@/components/useAsync';
 import { STORY_ACCOUNTS, fetchAccount, fetchGuide, sendAction } from '@/lib/client';
 import { type ActionInput, TODAY } from '@/lib/rules';
 import type { AccountDetail, AiText } from '@/lib/types';
 
-const TIP = { background: 'var(--surface)', border: '1px solid var(--border)', fontSize: 12 };
 const describe = (a: { ACTION: string; DETAIL: string }) => {
   const d = JSON.parse(a.DETAIL);
   if (a.ACTION === 'LOG_PROMISE') return `${usd(d.amount)} by ${d.date}`;
   if (a.ACTION === 'ENROLL_HARDSHIP') return `${OFFER[d.program] ?? d.program}, pending review`;
   return `${CHANNEL[d.channel]} on ${d.date}, ${BAND_SHORT[d.band]}`;
 };
+const BANDS = ['MORNING', 'AFTERNOON', 'EVENING'];
+const CHANNELS = ['CALL', 'SMS', 'EMAIL'];
+
+function Heatmap({ c }: { c: AccountDetail }) {
+  const q = c.queue;
+  const cell = (ch: string, b: string) => c.profile.find((p) => p.CHANNEL === ch && p.TIME_BAND === b);
+  return (
+    <div>
+      <div className="grid grid-cols-[64px_repeat(3,1fr)] gap-1.5 text-[11px]" role="table" aria-label="Reach rate by channel and time of day">
+        <div role="row" className="contents"><span />{BANDS.map((b) => <span key={b} role="columnheader" className="text-center muted font-semibold capitalize">{BAND_SHORT[b]}</span>)}</div>
+        {CHANNELS.map((ch) => (
+          <div role="row" key={ch} className="contents">
+            <span role="rowheader" className="flex items-center font-semibold">{CHANNEL[ch]}</span>
+            {BANDS.map((b) => {
+              const p = cell(ch, b);
+              const best = q && q.PLAN_CHANNEL === ch && q.BEST_BAND === b;
+              const rate = p?.REACH_RATE ?? 0;
+              return (
+                <div role="cell" key={b} className="heat flex-col" title={p ? `${p.REACHED} of ${p.ATTEMPTS} reached` : 'No attempts'}
+                  style={{ background: p ? `color-mix(in srgb, var(${best ? '--ember' : '--dusk'}) ${12 + rate * 70}%, var(--surface-2))` : 'var(--surface-2)',
+                    color: rate > 0.45 ? '#fff' : 'var(--ink)', outline: best ? '2px solid var(--ember)' : undefined, outlineOffset: 1 }}>
+                  <span className="tabular">{p ? pct0(rate) : '—'}</span>
+                  <span className="font-normal opacity-80 text-[10px] tabular">{p ? `${p.REACHED}/${p.ATTEMPTS}` : 'none'}</span>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+      <p className="text-[11px] muted mt-2">Reach rate by channel and time of day, smoothed toward a low prior. Outlined: today&apos;s plan. Texts only with consent ({c.account.SMS_CONSENT ? 'on file' : 'not on file'}).</p>
+    </div>
+  );
+}
+
+type Ev = { at: string; kind: 'pay' | 'promise' | 'contact' | 'call' | 'action'; title: string; detail?: string; tone?: 'cure' | 'roll' | 'neutral' | 'dusk' | 'ember'; href?: string };
+function timeline(c: AccountDetail): Ev[] {
+  const ev: Ev[] = [
+    ...c.payments.map((p) => ({ at: p.PAID_ON, kind: 'pay' as const, title: `Paid ${usd(p.AMOUNT)}`, detail: p.KIND.toLowerCase(), tone: 'cure' as const })),
+    ...c.promises.map((p) => ({ at: p.DUE_DATE, kind: 'promise' as const, title: `Promise ${usd(p.PROMISE_AMOUNT)} ${p.STATUS.toLowerCase()}`, detail: `made ${p.CREATED_DATE} by ${CHANNEL[p.CHANNEL].toLowerCase()}`,
+      tone: p.STATUS === 'BROKEN' ? 'roll' as const : p.STATUS === 'KEPT' ? 'cure' as const : 'neutral' as const })),
+    ...c.contacts.map((x) => ({ at: x.ATTEMPT_TS, kind: 'contact' as const, title: `${CHANNEL[x.CHANNEL]}, ${BAND_SHORT[x.TIME_BAND]}`, detail: OUTCOME[x.OUTCOME] ?? x.OUTCOME,
+      tone: REACHED.includes(x.OUTCOME) ? 'cure' as const : 'neutral' as const, channel: x.CHANNEL })),
+    ...c.transcripts.map((t) => ({ at: t.CALL_TS, kind: 'call' as const, title: `Call reviewed · ${t.AGENT_NAME}`, detail: t.FLAGS.length ? `${t.FLAGS.length} QA flag${t.FLAGS.length > 1 ? 's' : ''}` : 'no issues',
+      tone: t.FLAGS.length ? 'roll' as const : 'cure' as const, href: `/qa/?id=${t.TRANSCRIPT_ID}` })),
+  ];
+  return ev.sort((a, b) => (a.at < b.at ? 1 : -1));
+}
+const EV_ICON = { pay: CircleDollarSign, promise: HandHeart, contact: Phone, call: ShieldCheck, action: CalendarClock };
+
+function Timeline({ c }: { c: AccountDetail }) {
+  const [all, setAll] = useState(false);
+  const ev = timeline(c);
+  const shown = all ? ev : ev.slice(0, 12);
+  return (
+    <div>
+      {c.actions.length > 0 && (
+        <ul className="mb-4 space-y-1.5">{c.actions.map((x, i) => (
+          <li key={i} className="flex items-center gap-2 text-[13px] rounded-lg px-3 py-2 tone-cure"><CalendarClock className="w-4 h-4" aria-hidden /><strong>{ACTION_NAME[x.ACTION]}</strong> {describe(x)} <span className="text-xs opacity-80 ml-auto">{x.ACTED_AT}</span></li>))}</ul>
+      )}
+      <ol className="relative border-l ml-2" style={{ borderColor: 'var(--line)' }}>
+        {shown.map((e, i) => {
+          const Icon = e.kind === 'contact' ? ((e as Ev & { channel?: string }).channel === 'SMS' ? MessageSquareText : (e as Ev & { channel?: string }).channel === 'EMAIL' ? Mail : Phone) : EV_ICON[e.kind];
+          const color = e.tone === 'cure' ? 'var(--cure)' : e.tone === 'roll' ? 'var(--roll)' : 'var(--ink-2)';
+          return (
+            <li key={i} className="pl-5 pb-3 relative">
+              <span className="absolute -left-[11px] top-0.5 w-[21px] h-[21px] rounded-full flex items-center justify-center" style={{ background: 'var(--surface)', border: `1.5px solid ${color}`, color }}><Icon className="w-3 h-3" aria-hidden /></span>
+              <div className="flex flex-wrap items-baseline gap-x-2 text-[13px]">
+                {e.href ? <Link href={e.href} className="font-semibold underline underline-offset-2">{e.title}</Link> : <span className="font-semibold">{e.title}</span>}
+                <span className="text-xs" style={{ color }}>{e.detail}</span>
+                <span className="text-[11px] muted tabular ml-auto">{e.at.slice(0, 16).replace('2026-', '')}</span>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      {ev.length > 12 && <button className="btn text-xs" onClick={() => setAll(!all)}>{all ? 'Show less' : `Show all ${ev.length} events`}</button>}
+    </div>
+  );
+}
 
 function Actions({ c, onDone }: { c: AccountDetail; onDone: () => void }) {
   const q = c.queue!;
+  const [tab, setTab] = useState<'promise' | 'hardship' | 'schedule'>('promise');
   const [amount, setAmount] = useState(String(Math.round(c.account.MONTHLY_PAYMENT * 0.5)));
   const [date, setDate] = useState('2026-11-20');
   const [program, setProgram] = useState(c.programs.find((p) => p.ELIGIBLE)?.PROGRAM_ID ?? '');
@@ -41,36 +120,80 @@ function Actions({ c, onDone }: { c: AccountDetail; onDone: () => void }) {
   };
   const eligible = c.programs.filter((p) => p.ELIGIBLE);
   return (
-    <Card title="Take action" right={<span className="text-[11px] muted">Recorded in APP.ACCOUNT_ACTIONS in Live mode</span>}>
-      <div className="grid md:grid-cols-3 gap-4 text-sm">
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); run({ action: 'LOG_PROMISE', amount: Number(amount), date }, 'Promise logged.'); }}>
-          <div className="font-semibold">Log a promise to pay</div>
-          <label className="block text-xs muted">Amount (USD)<input className="field mt-1" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
-          <label className="block text-xs muted">Pay by<input className="field mt-1" type="date" min={TODAY} max="2026-12-16" value={date} onChange={(e) => setDate(e.target.value)} /></label>
-          <button className="btn btn-primary" disabled={busy}>Log promise</button>
-        </form>
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); run({ action: 'ENROLL_HARDSHIP', program }, 'Enrollment requested for review.'); }}>
-          <div className="font-semibold">Enroll in a hardship program</div>
+    <Panel title="Take action" sub="Recorded in APP.ACCOUNT_ACTIONS in Live mode; this browser only in Sample mode">
+      <div className="seg w-full mb-3" role="group" aria-label="Action">
+        {([['promise', 'Log promise'], ['hardship', 'Hardship'], ['schedule', 'Schedule']] as const).map(([k, l]) => (
+          <button key={k} aria-pressed={tab === k} onClick={() => { setTab(k); setMsg(undefined); }} className="flex-1">{l}</button>))}
+      </div>
+      {tab === 'promise' && (
+        <form className="space-y-3 text-sm" onSubmit={(e) => { e.preventDefault(); run({ action: 'LOG_PROMISE', amount: Number(amount), date }, 'Promise logged.'); }}>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs muted">Amount (USD)<input className="field mt-1" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+            <label className="block text-xs muted">Pay by<input className="field mt-1" type="date" min={TODAY} max="2026-12-16" value={date} onChange={(e) => setDate(e.target.value)} /></label>
+          </div>
+          <button className="btn btn-primary w-full" disabled={busy}>Log promise</button>
+        </form>)}
+      {tab === 'hardship' && (
+        <form className="space-y-3 text-sm" onSubmit={(e) => { e.preventDefault(); run({ action: 'ENROLL_HARDSHIP', program }, 'Enrollment requested for review.'); }}>
           {eligible.length ? (
             <label className="block text-xs muted">Program<select className="field mt-1" value={program} onChange={(e) => setProgram(e.target.value)}>
               {eligible.map((p) => <option key={p.PROGRAM_ID} value={p.PROGRAM_ID}>{p.NAME}</option>)}</select></label>
           ) : <p className="text-xs muted">Not eligible for a program today.</p>}
-          <button className="btn" disabled={busy || !eligible.length}>Request enrollment</button>
-        </form>
-        <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); run({ action: 'SCHEDULE', channel, band, date: sdate }, 'Contact scheduled.'); }}>
-          <div className="font-semibold">Schedule the next contact</div>
-          <div className="grid grid-cols-2 gap-2">
+          <button className="btn btn-primary w-full" disabled={busy || !eligible.length}>Request enrollment</button>
+        </form>)}
+      {tab === 'schedule' && (
+        <form className="space-y-3 text-sm" onSubmit={(e) => { e.preventDefault(); run({ action: 'SCHEDULE', channel, band, date: sdate }, 'Contact scheduled.'); }}>
+          <div className="grid grid-cols-3 gap-2">
             <label className="block text-xs muted">Channel<select className="field mt-1" value={channel} onChange={(e) => setChannel(e.target.value)}>
-              {['CALL', 'SMS', 'EMAIL'].map((x) => <option key={x} value={x}>{CHANNEL[x]}</option>)}</select></label>
+              {CHANNELS.map((x) => <option key={x} value={x}>{CHANNEL[x]}</option>)}</select></label>
             <label className="block text-xs muted">Time<select className="field mt-1" value={band} onChange={(e) => setBand(e.target.value)}>
-              {['MORNING', 'AFTERNOON', 'EVENING'].map((x) => <option key={x} value={x}>{BAND_SHORT[x]}</option>)}</select></label>
+              {BANDS.map((x) => <option key={x} value={x}>{BAND_SHORT[x]}</option>)}</select></label>
+            <label className="block text-xs muted">Date<input className="field mt-1" type="date" min={TODAY} max="2026-12-16" value={sdate} onChange={(e) => setSdate(e.target.value)} /></label>
           </div>
-          <label className="block text-xs muted">Date<input className="field mt-1" type="date" min={TODAY} max="2026-12-16" value={sdate} onChange={(e) => setSdate(e.target.value)} /></label>
-          <button className="btn" disabled={busy}>Schedule</button>
-        </form>
-      </div>
-      {msg && <p role="status" className="text-sm mt-3 font-medium" style={{ color: msg.ok ? 'var(--positive)' : 'var(--negative)' }}>{msg.text}</p>}
-    </Card>
+          <button className="btn btn-primary w-full" disabled={busy}>Schedule</button>
+        </form>)}
+      {msg && <p role="status" className={`text-sm mt-3 font-semibold rounded-lg px-3 py-2 ${msg.ok ? 'tone-cure' : 'tone-roll'}`}>{msg.text}</p>}
+    </Panel>
+  );
+}
+
+function Guide({ c }: { c: AccountDetail }) {
+  const id = c.account.ACCOUNT_ID;
+  const q = c.queue;
+  const [ai, setAi] = useState<{ loading?: boolean; data?: AiText; error?: string }>({});
+  useEffect(() => setAi({}), [id]);
+  const go = () => { setAi({ loading: true }); fetchGuide(id).then((data) => setAi({ data }), (e) => setAi({ error: String(e.message ?? e) })); };
+  const eligible = c.programs.filter((p) => p.ELIGIBLE).length;
+  const steps = [
+    `Reading ${c.promises.length} promise${c.promises.length === 1 ? '' : 's'}, ${c.contacts.length} contact attempts and ${c.payments.length} payments`,
+    `Checking ${c.programs.length} hardship programs (${eligible} eligible) and the call limit (${c.limit.calls7d} of ${c.limit.limit})`,
+    `Choosing the opening: ${q ? `${CHANNEL[q.PLAN_CHANNEL].toLowerCase()} in the ${BAND_SHORT[q.BEST_BAND]}` : 'no plan'} with the required disclosure`,
+    'Drafting the conversation guide with AI_COMPLETE',
+  ];
+  return (
+    <AiPanel title="Conversation guide" icon={<Wand2 className="w-4 h-4" style={{ color: 'var(--ember)' }} aria-hidden />}
+      right={<><PoweredBy>AI_COMPLETE</PoweredBy>{ai.data && <AiMeta ai={ai.data} />}</>}>
+      {ai.error ? <ErrorBox error={ai.error} /> : ai.loading ? <Reasoning kind="guide" steps={steps} /> : ai.data ? (
+        <>
+          <StreamText text={ai.data.text} />
+          <Sources items={[
+            { label: `ACCOUNTS · ${id}`, detail: 'Borrower, product, consent and language' },
+            { label: `PROMISES_TO_PAY · ${c.promises.length}`, detail: 'Kept, broken and pending promises' },
+            { label: `CONTACT_PROFILE · ${c.profile.length} cells`, detail: 'Reach rate by channel and time' },
+            { label: `HARDSHIP_PROGRAMS · ${eligible} eligible`, detail: 'Eligibility rules' },
+          ]} />
+          <div className="flex items-center justify-between gap-2 mt-3 flex-wrap">
+            <p className="text-[11px] muted">AI-drafted from this account&apos;s facts. Not legal advice; follow your own scripts and policies.</p>
+            <button className="btn text-xs" onClick={go}>Redraft</button>
+          </div>
+        </>
+      ) : (
+        <div>
+          <p className="text-sm muted mb-3">{q ? 'A script with the required disclosure, an empathetic opening, the right offer and what to avoid, drafted from this borrower\u2019s history.' : 'Available for accounts in today\u2019s queue (1 to 59 days past due).'}</p>
+          <button className="btn btn-ai w-full" onClick={go} disabled={!q}><Sparkles className="w-4 h-4" aria-hidden />Draft a conversation guide</button>
+        </div>
+      )}
+    </AiPanel>
   );
 }
 
@@ -79,130 +202,104 @@ function AccountView() {
   const [tick, setTick] = useState(0);
   const refreshing = useRef(false);
   const c = useAsync(() => fetchAccount(id).finally(() => { refreshing.current = false; }), [id, tick], refreshing.current);
-  const [ai, setAi] = useState<{ loading?: boolean; data?: AiText; error?: string }>({});
-  useEffect(() => setAi({}), [id]);
-  const guide = () => { setAi({ loading: true }); fetchGuide(id).then((data) => setAi({ data }), (e) => setAi({ error: String(e.message ?? e) })); };
-
   if (c.error) return <ErrorBox error={c.error} />;
-  if (c.loading || !c.data) return <Thinking label="Loading the account" />;
+  if (c.loading || !c.data) return <PageSkeleton label="Loading the account" />;
   const { account: a, queue: q, limit } = c.data;
   const used = limit.calls7d + limit.scheduledCalls;
   const dpd = c.data.dpd.map((d) => ({ ...d, day: d.DAY.slice(5) }));
+  const usedPct = Math.min(1, used / limit.limit);
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <Link href="/queue/" className="text-xs muted">← Today&apos;s queue</Link>
-          <h1 className="text-xl font-bold">{a.CUSTOMER_NAME}</h1>
-          <p className="text-sm muted">{a.ACCOUNT_ID} · {a.PRODUCT === 'AUTO' ? 'Auto' : 'Personal'} loan ending {a.LAST4} · {a.CITY}, {a.STATE} {a.ZIP} · prefers {a.PREFERRED_LANGUAGE}</p>
+    <div className="space-y-5">
+      <div className="band rounded-[20px] px-5 sm:px-7 py-5">
+        <div className="relative z-10">
+          <Link href="/queue/" className="text-xs inline-flex items-center gap-1 opacity-85 no-underline hover:opacity-100"><ArrowLeft className="w-3.5 h-3.5" aria-hidden />Today&apos;s queue</Link>
+          <div className="flex items-start justify-between gap-4 flex-wrap mt-2">
+            <div className="flex items-center gap-4 min-w-0">
+              <span className="w-14 h-14 rounded-2xl flex-none flex items-center justify-center display text-xl font-bold" style={{ background: 'rgba(255,255,255,.16)' }}>{a.CUSTOMER_NAME.split(' ').map((w) => w[0]).join('').slice(0, 2)}</span>
+              <div className="min-w-0">
+                <h1 className="text-[26px] font-bold leading-tight">{a.CUSTOMER_NAME}</h1>
+                <p className="text-sm opacity-85"><span className="mono">{a.ACCOUNT_ID}</span> · {a.PRODUCT === 'AUTO' ? 'Auto' : 'Personal'} loan ending {a.LAST4} · {a.CITY}, {a.STATE} {a.ZIP} · prefers {a.PREFERRED_LANGUAGE}</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {a.DISASTER_EVENT && <span className="pill chip-on-band">{a.DISASTER_EVENT}</span>}
+              <SourceChip onBand ms={c.data.ms} source={c.data.source} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mt-5">
+            {[
+              ['Days past due', String(a.DPD), `${a.DPD_BUCKET} bucket`],
+              ['Past due', usd(a.PAST_DUE), `${usd(a.MONTHLY_PAYMENT)} a month`],
+              ['Roll risk', q ? pct0(q.ROLL_RISK) : '—', 'chance of 60+ DPD'],
+              ['Queue rank', q ? `#${q.QUEUE_RANK}` : '—', q ? `${usd(q.EXPECTED_RECOVERY)} expected` : 'not in today\u2019s queue'],
+              ['Suggested offer', q ? OFFER[q.SUGGESTED_OFFER] : '—', q ? `${CHANNEL[q.PLAN_CHANNEL]}, ${BAND_SHORT[q.BEST_BAND]}` : ''],
+            ].map(([l, v, s]) => (
+              <div key={l} className="rounded-xl px-3 py-2.5" style={{ background: 'rgba(255,255,255,.12)' }}>
+                <div className="text-[10.5px] uppercase tracking-wider font-bold opacity-75">{l}</div>
+                <div className="display text-lg font-bold tabular leading-tight mt-0.5">{v}</div>
+                <div className="text-[11px] opacity-75">{s}</div>
+              </div>
+            ))}
+          </div>
         </div>
-        <SourceChip ms={c.data.ms} source={c.data.source} />
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <div className="card p-3"><div className="text-[11px] uppercase muted font-semibold">Days past due</div><div className="text-2xl font-bold tabular">{a.DPD}</div><div className="text-xs muted">{a.DPD_BUCKET} bucket</div></div>
-        <div className="card p-3"><div className="text-[11px] uppercase muted font-semibold">Past due</div><div className="text-2xl font-bold tabular">{usd(a.PAST_DUE)}</div><div className="text-xs muted">{usd(a.MONTHLY_PAYMENT)} a month</div></div>
-        <div className="card p-3"><div className="text-[11px] uppercase muted font-semibold">Roll risk</div><div className="text-2xl font-bold tabular">{q ? pct0(q.ROLL_RISK) : '—'}</div><div className="text-xs muted">chance of reaching 60+ DPD</div></div>
-        <div className="card p-3"><div className="text-[11px] uppercase muted font-semibold">Queue rank</div><div className="text-2xl font-bold tabular">{q ? `#${q.QUEUE_RANK}` : '—'}</div><div className="text-xs muted">{q ? `${usd(q.EXPECTED_RECOVERY)} expected recovery` : 'not in today’s queue'}</div></div>
-        <div className="card p-3"><div className="text-[11px] uppercase muted font-semibold">Suggested offer</div><div className="text-base font-bold mt-1">{q ? OFFER[q.SUGGESTED_OFFER] : '—'}</div></div>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
-        <Card className="min-w-0" title="Contact plan" right={<PoweredBy>Dynamic Tables</PoweredBy>}>
-          {q && <p className="text-sm mb-2">Reach out by <strong>{CHANNEL[q.PLAN_CHANNEL].toLowerCase()}</strong> in the <strong>{BAND[q.BEST_BAND]}</strong>.
-            {q.USUAL_CHANNEL && (q.USUAL_CHANNEL !== q.PLAN_CHANNEL || q.USUAL_BAND !== q.BEST_BAND) &&
-              <> Most attempts so far were {CHANNEL[q.USUAL_CHANNEL].toLowerCase()}s in the {BAND_SHORT[q.USUAL_BAND!]}, which reached them {pct0(q.USUAL_REACH_RATE ?? 0)} of the time.</>}</p>}
-          <table className="data-table w-full text-sm">
-            <thead><tr><th className="text-left">Channel and time</th><th className="text-right">Tries</th><th className="text-right">Reached</th><th className="text-right">Rate</th></tr></thead>
-            <tbody>{c.data.profile.slice(0, 6).map((p) => (
-              <tr key={p.CHANNEL + p.TIME_BAND}><td>{CHANNEL[p.CHANNEL]}, {BAND_SHORT[p.TIME_BAND]}</td><td className="text-right tabular">{p.ATTEMPTS}</td><td className="text-right tabular">{p.REACHED}</td><td className="text-right tabular">{pct0(p.REACH_RATE)}</td></tr>))}</tbody>
-          </table>
-          <p className="text-xs muted mt-2">Rates are smoothed toward a low prior. Texts only with consent ({a.SMS_CONSENT ? 'on file' : 'not on file'}).</p>
-        </Card>
-        <Card className="min-w-0" title="Hardship eligibility">
-          {a.DISASTER_EVENT && <div className="text-xs mb-2"><Tag tone="warning">{a.DISASTER_EVENT}</Tag> <span className="muted">declared for ZIP {a.ZIP}</span></div>}
-          <ul className="space-y-2 text-sm">{c.data.programs.map((p) => (
-            <li key={p.PROGRAM_ID} className="flex gap-2 items-start">
-              <Tag tone={p.ELIGIBLE ? 'positive' : 'neutral'}>{p.ELIGIBLE ? 'Eligible' : 'No'}</Tag>
-              <div><div className="font-medium">{p.NAME}</div><div className="text-xs muted">{p.ELIGIBILITY}</div></div>
-            </li>))}</ul>
-          {c.data.enrollments.length > 0 && <p className="text-xs muted mt-2">History: {c.data.enrollments.map((e) => `${OFFER[e.PROGRAM_ID]} ${e.ENROLLED_ON} (${e.STATUS.toLowerCase()})`).join('; ')}</p>}
-        </Card>
-        <Card className="min-w-0" title="Contact-frequency limit">
-          <div className="text-3xl font-bold tabular">{used} <span className="text-base muted font-medium">of {limit.limit} calls</span></div>
-          <div className="h-2 rounded-full mt-2" style={{ background: 'var(--surface-2)' }}>
-            <div className="h-2 rounded-full" style={{ width: `${Math.min(100, (used / limit.limit) * 100)}%`, background: used >= limit.limit ? 'var(--negative)' : used >= limit.limit - 1 ? 'var(--warning)' : 'var(--positive)' }} />
+      <div className="grid xl:grid-cols-[1fr_400px] gap-5 items-start">
+        <div className="space-y-5 min-w-0">
+          <div className="grid md:grid-cols-2 gap-4">
+            <Panel title="When this borrower answers" right={<PoweredBy>Dynamic Table · CONTACT_PROFILE</PoweredBy>}>
+              {q && <p className="text-sm mb-3">Reach out by <strong style={{ color: 'var(--ember)' }}>{CHANNEL[q.PLAN_CHANNEL].toLowerCase()} in the {BAND[q.BEST_BAND]}</strong>.
+                {q.USUAL_CHANNEL && (q.USUAL_CHANNEL !== q.PLAN_CHANNEL || q.USUAL_BAND !== q.BEST_BAND) &&
+                  <> Most attempts so far were {CHANNEL[q.USUAL_CHANNEL].toLowerCase()}s in the {BAND_SHORT[q.USUAL_BAND!]}, reaching them {pct0(q.USUAL_REACH_RATE ?? 0)} of the time.</>}</p>}
+              <Heatmap c={c.data} />
+            </Panel>
+            <Panel title="Days past due" sub="Aug 1 to Nov 15">
+              <div className="h-[200px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dpd} margin={{ left: -20, right: 6, top: 6 }}>
+                    <defs><linearGradient id="dpdg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="var(--roll)" stopOpacity={0.3} /><stop offset="1" stopColor="var(--roll)" stopOpacity={0} /></linearGradient></defs>
+                    <CartesianGrid stroke="var(--line)" vertical={false} />
+                    <XAxis dataKey="day" tick={AXIS} interval={24} tickLine={false} axisLine={false} />
+                    <YAxis tick={AXIS} tickLine={false} axisLine={false} />
+                    <ReferenceLine y={60} stroke="var(--roll)" strokeDasharray="4 4" label={{ value: '60 DPD', fontSize: 10, fill: 'var(--roll)', position: 'insideTopRight' }} />
+                    <Tooltip content={<ChartTip fmt={(v) => `${v} days`} />} />
+                    <Area isAnimationActive={false} dataKey="DPD" name="Days past due" stroke="var(--roll)" strokeWidth={2} fill="url(#dpdg)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </Panel>
           </div>
-          <p className="text-sm mt-2">{limit.calls7d} calls in the last 7 days{limit.scheduledCalls ? ` plus ${limit.scheduledCalls} scheduled` : ''}. {used >= limit.limit ? 'No more calls this week; use text or email.' : `${limit.limit - used} call${limit.limit - used === 1 ? '' : 's'} left this week.`}</p>
-          <p className="text-xs muted mt-2">Illustrative limit of 7 calls in 7 days, checked when you schedule. Replace with your own state and policy rules.</p>
-        </Card>
-      </div>
+          <Panel title="Account timeline" sub="Payments, promises, contact attempts and reviewed calls, newest first">
+            <Timeline c={c.data} />
+          </Panel>
+        </div>
 
-      <Card title="Conversation guide" right={<>
-        <PoweredBy>AI_COMPLETE</PoweredBy>
-        {ai.data && (ai.data.source === 'sample' ? <SampleAiBadge /> : <span className="text-[11px] muted">{(ai.data.latencyMs / 1000).toFixed(1)} s · {ai.data.model}</span>)}</>}>
-        {ai.error ? <ErrorBox error={ai.error} /> : ai.loading ? <Reasoning kind="guide" /> : ai.data ? <Markdown text={ai.data.text} /> : (
-          <div className="flex items-center gap-3 flex-wrap">
-            <button className="btn btn-ai" onClick={guide} disabled={!q}><Sparkles className="w-4 h-4" aria-hidden />Draft a conversation guide</button>
-            <span className="text-xs muted">{q ? 'An AI-drafted script with the required disclosure, an offer, and what to avoid. Review before use.' : 'Available for accounts in today’s queue.'}</span>
-          </div>)}
-        {ai.data && <p className="text-xs muted mt-3">AI-generated from this account&apos;s facts. Not legal advice; follow your own scripts and policies.</p>}
-      </Card>
-
-      {q && <Actions key={a.ACCOUNT_ID} c={c.data} onDone={() => { refreshing.current = true; setTick((t) => t + 1); }} />}
-
-      <div className="grid lg:grid-cols-2 gap-4">
-        <Card className="min-w-0" title="Days past due, Aug 1 to Nov 15">
-          <div className="h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dpd} margin={{ left: -18, right: 6, top: 6 }}>
-                <CartesianGrid stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--muted)' }} interval={20} />
-                <YAxis tick={{ fontSize: 11, fill: 'var(--muted)' }} />
-                <Tooltip contentStyle={TIP} />
-                <Area isAnimationActive={false} dataKey="DPD" name="DPD" stroke="var(--negative)" fill="var(--negative)" fillOpacity={0.15} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-        <Card className="min-w-0" title="Promises to pay">
-          {c.data.promises.length === 0 && !c.data.actions.some((x) => x.ACTION === 'LOG_PROMISE') ? <p className="text-sm muted">No promises yet.</p> : (
-            <table className="data-table w-full text-sm">
-              <thead><tr><th className="text-left">Due</th><th className="text-right">Amount</th><th className="text-left">Made by</th><th className="text-left">Status</th></tr></thead>
-              <tbody>
-                {c.data.actions.filter((x) => x.ACTION === 'LOG_PROMISE').map((x, i) => { const d = JSON.parse(x.DETAIL); return (
-                  <tr key={`n${i}`}><td>{d.date}</td><td className="text-right tabular">{usd(d.amount)}</td><td>This app</td><td><Tag>Pending</Tag></td></tr>); })}
-                {c.data.promises.map((p) => (
-                  <tr key={p.PROMISE_ID}><td>{p.DUE_DATE}</td><td className="text-right tabular">{usd(p.PROMISE_AMOUNT)}</td><td>{CHANNEL[p.CHANNEL]}</td>
-                    <td><Tag tone={p.STATUS === 'BROKEN' ? 'danger' : p.STATUS === 'KEPT' ? 'positive' : 'neutral'}>{p.STATUS.toLowerCase()}</Tag></td></tr>))}
-              </tbody>
-            </table>)}
-        </Card>
-        <Card className="min-w-0" title="Recent contact attempts">
-          <div className="relative overflow-y-auto max-h-[260px]">
-            <table className="data-table w-full text-sm">
-              <thead><tr><th className="text-left">When</th><th className="text-left">Channel</th><th className="text-left">Outcome</th></tr></thead>
-              <tbody>{c.data.contacts.map((x, i) => (
-                <tr key={i}><td className="tabular">{x.ATTEMPT_TS.slice(5)}</td><td>{CHANNEL[x.CHANNEL]}, {BAND_SHORT[x.TIME_BAND]}</td>
-                  <td><span style={{ color: ['RIGHT_PARTY_CONTACT', 'REPLIED', 'PROMISE_MADE'].includes(x.OUTCOME) ? 'var(--positive)' : undefined }}>{OUTCOME[x.OUTCOME] ?? x.OUTCOME}</span></td></tr>))}</tbody>
-            </table>
-          </div>
-        </Card>
-        <Card className="min-w-0" title="Calls reviewed and actions">
-          {c.data.transcripts.length === 0 ? <p className="text-sm muted">No reviewed calls on this account.</p> : (
-            <ul className="space-y-1 text-sm mb-3">{c.data.transcripts.map((t) => (
-              <li key={t.TRANSCRIPT_ID}><Link href={`/qa/?id=${t.TRANSCRIPT_ID}`} className="font-medium">{t.TRANSCRIPT_ID}</Link> <span className="muted">{t.CALL_TS} · {t.AGENT_NAME}</span>{' '}
-                {t.FLAGS.length ? <Tag tone="danger">{t.FLAGS.length} QA flag{t.FLAGS.length > 1 ? 's' : ''}</Tag> : <Tag tone="positive">No issues</Tag>}</li>))}</ul>)}
-          <div className="text-xs font-semibold muted uppercase mb-1">Actions</div>
-          {c.data.actions.length === 0 ? <p className="text-sm muted">None yet.</p> : (
-            <ul className="space-y-1 text-sm">{c.data.actions.map((x, i) => <li key={i}><strong>{ACTION_NAME[x.ACTION]}</strong>: {describe(x)} <span className="muted text-xs">{x.ACTED_AT}</span></li>)}</ul>)}
-          <div className="text-xs font-semibold muted uppercase mt-3 mb-1">Payments</div>
-          <ul className="space-y-0.5 text-xs muted">{c.data.payments.slice(0, 5).map((p, i) => <li key={i}>{p.PAID_ON} · {usd(p.AMOUNT)} · {p.KIND.toLowerCase()}</li>)}</ul>
-        </Card>
+        <div className="space-y-4 xl:sticky xl:top-20 min-w-0">
+          <Guide c={c.data} />
+          <Panel title="Contact-frequency limit">
+            <div className="flex items-end justify-between">
+              <div className="display text-[30px] font-bold tabular leading-none">{used}<span className="text-base muted font-medium"> of {limit.limit} calls</span></div>
+              <Tag tone={used >= limit.limit ? 'roll' : used >= limit.limit - 1 ? 'caution' : 'cure'}>{used >= limit.limit ? 'At limit' : `${limit.limit - used} left`}</Tag>
+            </div>
+            <div className="track mt-3"><span style={{ width: `${usedPct * 100}%`, background: used >= limit.limit ? 'var(--roll)' : used >= limit.limit - 1 ? 'var(--caution)' : 'var(--cure)' }} /></div>
+            <p className="text-xs muted mt-2">{limit.calls7d} calls in the last 7 days{limit.scheduledCalls ? ` plus ${limit.scheduledCalls} scheduled` : ''}. {used >= limit.limit ? 'No more calls this week; use text or email.' : ''} Illustrative limit, checked when you schedule.</p>
+          </Panel>
+          <Panel title="Hardship eligibility">
+            <ul className="space-y-2.5 text-sm">{c.data.programs.map((p) => (
+              <li key={p.PROGRAM_ID} className="flex gap-2.5 items-start">
+                <Tag tone={p.ELIGIBLE ? 'cure' : 'neutral'}>{p.ELIGIBLE ? 'Eligible' : 'Not now'}</Tag>
+                <div className="min-w-0"><div className="font-semibold">{p.NAME}</div><div className="text-xs muted">{p.ELIGIBILITY}</div></div>
+              </li>))}</ul>
+            {c.data.enrollments.length > 0 && <p className="text-xs muted mt-3">History: {c.data.enrollments.map((e) => `${OFFER[e.PROGRAM_ID]} ${e.ENROLLED_ON} (${e.STATUS.toLowerCase()})`).join('; ')}</p>}
+          </Panel>
+          {q && <Actions key={a.ACCOUNT_ID} c={c.data} onDone={() => { refreshing.current = true; setTick((t) => t + 1); }} />}
+          {q && <p className="text-[11px] muted px-1">Queue tone: <Tag tone={riskTone(q.ROLL_RISK)}>{pct0(q.ROLL_RISK)} roll risk</Tag></p>}
+        </div>
       </div>
     </div>
   );
 }
 
 export default function AccountPage() {
-  return <Suspense fallback={<Thinking label="Loading the account" />}><AccountView /></Suspense>;
+  return <Suspense fallback={<PageSkeleton label="Loading the account" />}><AccountView /></Suspense>;
 }

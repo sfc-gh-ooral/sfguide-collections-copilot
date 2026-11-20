@@ -54,9 +54,12 @@ function withLocal(c: AccountDetail): AccountDetail {
   return { ...c, actions, limit: { ...c.limit, scheduledCalls }, source: 'captured' };
 }
 
-export async function fetchOverview(): Promise<Overview> {
-  if (await isLive()) return api('/api/overview');
-  return { ...S.overview, source: 'captured' };
+// The shell's shift board and the portfolio share one overview request.
+let overviewPromise: Promise<Overview> | undefined;
+export function fetchOverview(): Promise<Overview> {
+  overviewPromise ??= (async () => (await isLive()) ? api<Overview>('/api/overview') : { ...S.overview, source: 'captured' as const })();
+  overviewPromise.catch(() => { overviewPromise = undefined; });
+  return overviewPromise;
 }
 
 export async function fetchQueue(filter: string): Promise<Queue> {
