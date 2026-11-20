@@ -30,7 +30,7 @@ reach, a promise made).
 | `ink` | `#1C1830` | `#ECE9F7` | Primary text |
 | `ink-2` | `#5A5470` | `#ABA5C2` | Secondary text |
 | `dusk` | `#4B3FA8` | `#A99DF7` | Brand, primary actions, active nav, series 1, focus ring |
-| `ember` | `#B4501A` | `#F4A672` | Accent: best contact window, AI, series 2 |
+| `ember` | `#A3460F` | `#F4A672` | Accent: best contact window, AI, series 2 |
 | `cure` | `#15734D` | `#5BD39A` | Cured, kept, eligible, reached |
 | `caution` | `#8F5A00` | `#F0BE5A` | Near limit, broken once, watch |
 | `roll` | `#B42345` | `#FF7D98` | Roll risk, broken promise, high-risk call |
@@ -53,7 +53,7 @@ Contrast is checked by `scripts/check-contrast.mjs`: every text token passes WCA
 
 - **Top bar, not a sidebar.** Logo and wordmark, four tabs (Portfolio, Today's queue, Call QA, Ask), a
   **shift meter** (queue worked today, calls remaining under the contact limit), the role chip
-  ("Dana Okafor · Collections lead", fictional) and the Sample/Live environment badge. On phones the tabs
+  ("Maren Holt · Collections lead", fictional) and the Sample/Live environment badge. On phones the tabs
   move to a horizontal scroller under the bar.
 - **Dusk band:** each page opens with a short gradient band holding the title, business date and the
   capability chips; the content panels overlap its bottom edge.

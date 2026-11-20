@@ -82,8 +82,8 @@ export default function Shell({ children }: { children: ReactNode }) {
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <ShiftBoard />
             <div className="hidden md:flex items-center gap-2 rounded-full pl-1 pr-3 py-1 border" style={{ borderColor: 'var(--line)' }} title="Fictional user">
-              <span className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: 'var(--ember)', color: 'var(--surface)' }}>DO</span>
-              <span className="leading-tight"><span className="block text-xs font-semibold">Dana Okafor</span><span className="block text-[10.5px] muted">Collections lead</span></span>
+              <span className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold" style={{ background: 'var(--ember)', color: 'var(--surface)' }}>MH</span>
+              <span className="leading-tight"><span className="block text-xs font-semibold">Maren Holt</span><span className="block text-[10.5px] muted">Collections lead</span></span>
             </div>
             <ModeChip />
             <ThemeToggle />

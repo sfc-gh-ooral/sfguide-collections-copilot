@@ -5,7 +5,7 @@
 :root {
   --canvas: #F5F3FA; --surface: #FFFFFF; --surface-2: #EEEBF6; --line: #DEDAEA;
   --ink: #1C1830; --ink-2: #5A5470;
-  --dusk: #4B3FA8; --ember: #B4501A; --cure: #15734D; --caution: #8F5A00; --roll: #B42345; --sample: #6B4BB8;
+  --dusk: #4B3FA8; --ember: #A3460F; --cure: #15734D; --caution: #8F5A00; --roll: #B42345; --sample: #6B4BB8;
   --on-dusk: #FFFFFF;
   --shadow: 0 1px 2px rgba(28, 24, 48, .05), 0 6px 20px rgba(28, 24, 48, .06);
   --shadow-hover: 0 2px 4px rgba(28, 24, 48, .06), 0 14px 34px rgba(75, 63, 168, .16);
