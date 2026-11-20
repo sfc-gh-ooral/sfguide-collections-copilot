@@ -25,19 +25,20 @@ const SCHEME = process.env.COLOR_SCHEME || "light";   // "dark" or "light"
 // The walkthrough, in landing-page order. `card` marks which shots become catalog cards (in that order).
 const SHOTS = [
   { name: "01-portfolio", card: 1, path: "/", wait: "text=What the data shows" },
-  { name: "02-todays-queue", card: 2, path: "/queue/?filter=EVENING_SMS", wait: "text=Contact plan" },
+  { name: "02-todays-queue", card: 2, path: "/queue/?filter=EVENING_SMS", wait: "tbody tr",
+    async act(page) { await page.locator("tbody tr").first().click(); await page.locator("[role=dialog]").waitFor(); } },
   {
     name: "03-account-broken-promises", card: 3, path: "/account/?id=L018004", wait: "text=Contact-frequency limit",
     async act(page) {
       await page.getByRole("button", { name: "Draft a conversation guide" }).click();
-      await page.locator(".reasoning").waitFor();
       await page.getByText("Sample AI response").waitFor({ timeout: 15000 });
-      await page.getByRole("heading", { name: "Hardship eligibility" }).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(3500); // let the streaming reveal finish
     },
   },
   {
     name: "04-account-flood-area", card: 4, path: "/account/?id=L017001", wait: "text=Hardship eligibility",
     async act(page) {
+      await page.getByRole("button", { name: "Hardship", exact: true }).click();
       await page.getByRole("button", { name: "Request enrollment" }).click();
       const done = page.getByText("Enrollment requested for review.");
       await done.waitFor();
@@ -52,6 +53,7 @@ const SHOTS = [
     async act(page) {
       await page.getByRole("button", { name: "Which accounts broke promises twice this month?" }).click();
       await page.getByText("Sample AI response").waitFor({ timeout: 15000 });
+      await page.waitForTimeout(3500);
     },
   },
 ];
