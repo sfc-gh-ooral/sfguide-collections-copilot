@@ -3,119 +3,146 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Collections Prioritization Copilot: a Snowflake example</title>
+<title>Collections Prioritization Copilot (Calvessa Recovery Desk): a Snowflake example</title>
 <meta name="description" content="Help collections teams contact the right delinquent customers first, with the right offer and a compliant, empathetic conversation guide. A Snowflake example on synthetic data.">
 <style>
-:root {
-  color-scheme: light dark;
-  --bg: light-dark(#f6f7fb, #0d1220);
-  --card: light-dark(#ffffff, #141b2d);
-  --card-2: light-dark(#f0f2f8, #1b2439);
-  --border: light-dark(#dde1ec, #2a3550);
-  --text: light-dark(#141a2e, #e8ecf6);
-  --text-2: light-dark(#4a5373, #aab3cc);
-  --muted: light-dark(#6b7493, #8590ad);
-  --accent: light-dark(#1a6fd1, #5aa7f5);
-  --accent-soft: light-dark(rgba(26,111,209,.1), rgba(90,167,245,.14));
-  --warn-soft: light-dark(#fff6e6, #2b2414);
-  --warn-border: light-dark(#f0c36d, #6b5420);
-}
+@font-face { font-family: "Figtree"; src: url(fonts/Figtree-300-900.woff2) format("woff2"); font-weight: 300 900; font-display: swap; }
+@font-face { font-family: "Bricolage Grotesque"; src: url(fonts/BricolageGrotesque-600-700.woff2) format("woff2"); font-weight: 600 700; font-display: swap; }
+@font-face { font-family: "JetBrains Mono"; src: url(fonts/JetBrainsMono.woff2) format("woff2"); font-weight: 400; font-display: swap; }
+:root { --canvas:#F5F3FA; --surface:#fff; --surface-2:#EEEBF6; --line:#DEDAEA; --ink:#1C1830; --ink-2:#5A5470; --dusk:#4B3FA8; --ember:#A3460F; --cure:#15734D; --roll:#B42345;
+  --band: linear-gradient(112deg,#2A2060 0%,#4B3A9A 46%,#8A5BB0 74%,#E58F5C 100%); color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root { --canvas:#100D1C; --surface:#191529; --surface-2:#231E37; --line:#332D4B; --ink:#ECE9F7; --ink-2:#ABA5C2; --dusk:#A99DF7; --ember:#F4A672; --cure:#5BD39A; --roll:#FF7D98; color-scheme: dark; } }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.6 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-a { color: var(--accent); }
-img, svg { max-width: 100%; height: auto; }
-.wrap { max-width: 1080px; width: 100%; margin: 0 auto; padding: 0 clamp(16px, 4vw, 28px); }
-header.top { border-bottom: 1px solid var(--border); background: var(--card); }
-header.top .wrap { display: flex; align-items: center; gap: 12px; padding-top: 14px; padding-bottom: 14px; flex-wrap: wrap; }
-.mark { width: 30px; height: 30px; border-radius: 8px; background: var(--accent); display: grid; place-items: center; }
-.brand { font-weight: 650; }
-.brand small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
-nav.links { margin-left: auto; display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; }
-nav.links a { text-decoration: none; color: var(--text-2); }
-nav.links a:hover { color: var(--accent); }
-.hero { padding-top: clamp(36px, 7vw, 72px); padding-bottom: 28px; }
-.eyebrow { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); }
-h1 { font-size: clamp(30px, 5vw, 46px); line-height: 1.15; margin: 10px 0 16px; letter-spacing: -.01em; }
-.lede { font-size: clamp(17px, 2.2vw, 19px); color: var(--text-2); max-width: 760px; margin: 0 0 24px; }
-.cta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 26px; }
-.btn { display: inline-block; padding: 10px 16px; border-radius: 9px; border: 1px solid var(--border); background: var(--card); color: var(--text); text-decoration: none; font-weight: 600; font-size: 15px; }
-.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
-.fact { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
-.fact b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-.note { background: var(--warn-soft); border: 1px solid var(--warn-border); border-radius: 10px; padding: 12px 16px; font-size: 14px; margin: 22px 0 0; }
-section { padding: 44px 0; border-top: 1px solid var(--border); }
-h2 { font-size: clamp(24px, 3.4vw, 30px); margin: 0 0 10px; }
-h3 { font-size: 18px; margin: 0 0 6px; }
-.sub { color: var(--text-2); max-width: 760px; margin: 0 0 24px; }
-.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
-.card p { margin: 0; color: var(--text-2); font-size: 15px; }
-figure { margin: 0 0 34px; }
-figure img { display: block; width: 100%; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
-figcaption { margin-top: 10px; font-size: 15px; color: var(--text-2); }
-figcaption .cap { display: inline-block; font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 9px; margin-right: 6px; }
-.step { font-size: 13px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
-.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; align-items: start; }
-.table-wrap { overflow-x: auto; }
-table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
-th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
-th { background: var(--card-2); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-code, pre { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
-code { background: var(--card-2); padding: 1px 5px; border-radius: 4px; }
-pre { background: var(--card-2); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: 0 0 14px; }
+html { overflow-x: clip; }
+body { margin: 0; background: var(--canvas); color: var(--ink); font: 16px/1.6 "Figtree", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+h1, h2, h3, .brand { font-family: "Bricolage Grotesque", "Figtree", sans-serif; letter-spacing: -.01em; }
+a { color: var(--dusk); }
+code, pre { font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 13px; }
+code { background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+pre { background: #1C1830; color: #ECE9F7; padding: 14px 16px; border-radius: 12px; overflow-x: auto; }
 pre code { background: none; padding: 0; }
-ul { padding-left: 20px; }
-li { margin: 4px 0; }
-footer { border-top: 1px solid var(--border); padding: 28px 0 44px; color: var(--muted); font-size: 14px; }
-@media (max-width: 560px) { nav.links { margin-left: 0; width: 100%; gap: 12px; } }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+.wrap > *, .two > *, .grid3 > *, .hero-grid > * { min-width: 0; }
+.top { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+.top .wrap { display: flex; align-items: center; gap: 12px; height: 64px; }
+.brand { font-weight: 700; font-size: 17px; line-height: 1.1; }
+.brand small { display: block; font: 500 11px "Figtree", sans-serif; color: var(--ink-2); }
+.links { margin-left: auto; display: flex; gap: 18px; font-size: 14px; font-weight: 600; }
+.links a { color: var(--ink-2); text-decoration: none; } .links a:hover { color: var(--dusk); }
+.hero { background: var(--band); color: #fff; position: relative; overflow: hidden; }
+.hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(700px 300px at 90% 110%, rgba(255,196,150,.38), transparent 70%); pointer-events: none; }
+.hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; padding: 64px 0 72px; }
+.eyebrow { text-transform: uppercase; letter-spacing: .14em; font-size: 12px; font-weight: 700; opacity: .85; }
+.hero h1 { font-size: clamp(32px, 4.4vw, 50px); line-height: 1.08; margin: 10px 0 16px; }
+.lede { font-size: 17px; opacity: .92; max-width: 640px; }
+.cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 26px 0 0; }
+.btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 20px; border-radius: 12px; font-weight: 700; text-decoration: none; font-size: 15px; }
+.btn.primary { background: #fff; color: #2A2060; } .btn.ghost { color: #fff; border: 1px solid rgba(255,255,255,.4); }
+.phone { background: #120E22; border-radius: 30px; padding: 14px; box-shadow: 0 30px 70px rgba(10,6,30,.45); border: 1px solid rgba(255,255,255,.12); max-width: 360px; margin-left: auto; }
+.phone .bar { display: flex; justify-content: space-between; font: 600 12px "Figtree"; color: #ABA5C2; padding: 4px 10px 10px; }
+.thread { background: #1B1630; border-radius: 20px; padding: 14px; display: grid; gap: 10px; }
+.msg { padding: 10px 12px; border-radius: 16px; font-size: 13.5px; line-height: 1.45; max-width: 86%; }
+.msg.out { background: #4B3FA8; color: #fff; border-bottom-right-radius: 5px; justify-self: end; }
+.msg.in { background: #2C2547; color: #ECE9F7; border-bottom-left-radius: 5px; }
+.msg small { display: block; font-size: 10.5px; opacity: .7; margin-top: 4px; }
+.stamp { justify-self: center; font: 700 10.5px "Figtree"; letter-spacing: .1em; text-transform: uppercase; color: #F4A672; }
+.logged { background: rgba(91,211,154,.14); color: #5BD39A; border: 1px solid rgba(91,211,154,.3); border-radius: 12px; padding: 8px 10px; font-size: 12.5px; font-weight: 600; }
+.facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: -36px; position: relative; z-index: 2; }
+.fact { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; font-size: 14px; color: var(--ink-2); box-shadow: 0 6px 20px rgba(28,24,48,.06); }
+.fact b { display: block; color: var(--ink); font-family: "Bricolage Grotesque", sans-serif; font-size: 17px; margin-bottom: 2px; }
+.note { margin: 22px 0 0; padding: 14px 16px; border-radius: 14px; background: color-mix(in srgb, var(--ember) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--ember) 30%, var(--line)); font-size: 14px; }
+section { padding: 56px 0 8px; }
+h2 { font-size: 30px; margin: 0 0 6px; }
+.sub { color: var(--ink-2); margin: 0 0 22px; max-width: 760px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+.card h3 { margin: 8px 0 4px; font-size: 18px; } .card p { margin: 0; color: var(--ink-2); font-size: 14.5px; }
+.ico { width: 36px; height: 36px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--dusk) 13%, transparent); color: var(--dusk); font-weight: 800; font-family: "Bricolage Grotesque"; }
+.story { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.story .card { border-top: 4px solid var(--c); } .story b { font-family: "Bricolage Grotesque"; font-size: 26px; color: var(--c); }
+figure { margin: 0 0 36px; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+figure img { display: block; width: 100%; height: auto; border-bottom: 1px solid var(--line); }
+figcaption { padding: 14px 18px; font-size: 14.5px; color: var(--ink-2); }
+.cap { display: inline-block; margin-right: 8px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--dusk); background: color-mix(in srgb, var(--dusk) 12%, transparent); }
+.table-wrap { overflow-x: auto; position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 14.5px; }
+th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--surface-2); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-2); }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+footer { margin-top: 56px; border-top: 1px solid var(--line); padding: 22px 0 40px; font-size: 13.5px; color: var(--ink-2); }
+@media (max-width: 900px) { .hero-grid { grid-template-columns: 1fr; gap: 32px; padding: 44px 0 64px; } .phone { margin: 0 auto; } .facts, .story { grid-template-columns: 1fr 1fr; } .grid3 { grid-template-columns: 1fr 1fr; } .two { grid-template-columns: 1fr; } }
+@media (max-width: 560px) { .links a:not(.keep) { display: none; } .facts, .story, .grid3 { grid-template-columns: 1fr; } h2 { font-size: 25px; } }
 </style>
 </head>
 <body>
-
 <header class="top">
   <div class="wrap">
-    <div class="mark" aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 15h2a2 2 0 1 0 0-4h-3c-.6 0-1.1.2-1.4.6L3 17"/><path d="m7 21 1.6-1.4c.3-.4.8-.6 1.4-.6h4c1.1 0 2.1-.4 2.8-1.2l4.6-4.4a2 2 0 0 0-2.75-2.91l-4.2 3.9"/><path d="m2 16 6 6"/><circle cx="16" cy="9" r="2.9"/><circle cx="6" cy="5" r="3"/></svg>
-    </div>
-    <div class="brand">Collections Prioritization Copilot<small>A Snowflake example on synthetic data</small></div>
+    <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#2A2060"/><path d="M20.5 7.2a9.6 9.6 0 1 0 4.3 16.9 8 8 0 1 1-4.3-16.9Z" fill="#B9AEFA"/><circle cx="21.6" cy="13.4" r="3.1" fill="#F29A62"/></svg>
+    <div class="brand">Calvessa Recovery Desk<small>Collections Prioritization Copilot · a Snowflake example</small></div>
     <nav class="links" aria-label="Page sections">
       <a href="#walkthrough">Walkthrough</a><a href="#how">How it works</a><a href="#run">Run it</a>
-      <a href="https://github.com/sfc-gh-ooral/sfguide-collections-copilot">Repository</a>
+      <a class="keep" href="https://github.com/sfc-gh-ooral/sfguide-collections-copilot">Repository</a>
     </nav>
   </div>
 </header>
-
 <main>
-<div class="wrap hero">
-  <div class="eyebrow">Banking · Operations · Consumer and auto lending</div>
-  <h1>Contact the right borrowers first, on the channel they answer, with an offer that fits</h1>
-  <p class="lede">A collections team starts each morning with more delinquent loans than it can reach. This example ranks today&rsquo;s accounts by roll risk and expected recovery, plans each contact on the channel and time the borrower actually responds to, flags hardship eligibility, tracks contact-frequency limits, and drafts an empathetic conversation guide. A QA screen reviews call transcripts for compliance. Model training, scoring, the queue, and the AI all run in Snowflake on the same data.</p>
-  <div class="cta">
-    <a class="btn primary" href="try/">Try the example</a>
-    <a class="btn" href="https://github.com/sfc-gh-ooral/sfguide-collections-copilot">View the repository</a>
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow">Banking · Operations · Consumer and auto lending</div>
+      <h1>Your collectors call at 10am. Your borrowers answer texts at 7pm.</h1>
+      <p class="lede">Every morning a collections team has more delinquent loans than it can reach. This example ranks today&rsquo;s accounts by roll risk and expected recovery, plans each contact on the channel and hour the borrower actually answers, flags hardship eligibility, tracks contact-frequency limits, drafts an empathetic conversation guide, and reviews calls for compliance. The model, the queue and the AI all run in Snowflake on the same data.</p>
+      <div class="cta">
+        <a class="btn primary" href="try/">Try the example, no account needed</a>
+        <a class="btn ghost" href="https://github.com/sfc-gh-ooral/sfguide-collections-copilot">View the repository</a>
+      </div>
+    </div>
+    <div class="phone" role="img" aria-label="Illustration of an evening text thread: an evening text sent at 7:12 pm, the borrower replies they can pay $180 on Friday, and the promise is logged in the queue">
+      <div class="bar"><span>Northwind Financial</span><span>7:14 pm</span></div>
+      <div class="thread">
+        <span class="stamp">Best window · text after 5pm</span>
+        <div class="msg out">Hi Ines, it&rsquo;s Northwind Financial about your personal loan. We can help with a smaller payment this month. Reply PLAN to talk options.<small>7:12 pm</small></div>
+        <div class="msg in">PLAN. I can do $180 on Friday when I get paid.<small>7:13 pm</small></div>
+        <div class="msg out">Thank you. $180 on Fri Nov 20 is noted. We&rsquo;ll send a reminder that morning.<small>7:14 pm</small></div>
+        <div class="logged">✓ Promise logged · 1 of 22 morning calls had reached her</div>
+      </div>
+    </div>
   </div>
+</div>
+<div class="wrap">
   <div class="facts">
     <div class="fact"><b>No account needed</b>The example runs in your browser on synthetic data</div>
-    <div class="fact"><b>Live mode setup</b>About 2.5 minutes on an XSMALL warehouse</div>
-    <div class="fact"><b>Measured cost</b>0.83 warehouse credits for two full setups, a live walkthrough, and the sample capture, plus AI tokens</div>
-    <div class="fact"><b>Requires</b>Standard Edition, Cortex AI in your region or cross-region inference</div>
+    <div class="fact"><b>About 2.5 minutes</b>Live-mode setup on an XSMALL warehouse</div>
+    <div class="fact"><b>0.83 credits measured</b>Two full setups, a live walkthrough and the sample capture, plus AI tokens</div>
+    <div class="fact"><b>Standard Edition</b>With Cortex AI in your region or cross-region inference</div>
   </div>
-  <p class="note"><strong>Synthetic data, illustrative logic.</strong> Not a production collections system, and not legal, regulatory, or compliance advice. Contact limits and hardship rules here are illustrative. Every name, loan, and call is invented. Results describe this synthetic data set only.</p>
+  <p class="note"><strong>Synthetic data, illustrative logic.</strong> Calvessa and Northwind Financial are fictional. Not a production collections system, and not legal, regulatory or compliance advice. Contact limits and hardship rules are illustrative. Every name, loan and call is invented; results describe this synthetic data set only.</p>
 </div>
 
 <section>
   <div class="wrap">
+    <h2>Four things the data is hiding</h2>
+    <p class="sub">The synthetic book has planted stories, so the walkthrough has something real to find.</p>
+    <div class="story">
+      <div class="card" style="--c:var(--ember)"><b>245</b><h3>Wrong hour, wrong channel</h3><p>Borrowers who answer evening texts but mostly get morning calls. The queue switches them.</p></div>
+      <div class="card" style="--c:var(--roll)"><b>97%</b><h3>Two broken promises</h3><p>of past episodes with 2+ broken promises reached 60+ DPD, against 59% with none.</p></div>
+      <div class="card" style="--c:var(--dusk)"><b>199</b><h3>Flood-area borrowers</h3><p>eligible for disaster forbearance in 20 ZIP codes (a synthetic event). None enrolled yet.</p></div>
+      <div class="card" style="--c:var(--roll)"><b>33</b><h3>Calls flagged in QA</h3><p>including one with a threat of arrest and the debt discussed with a relative.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
     <h2>What collectors can do</h2>
-    <p class="sub">Five screens cover the daily workflow. The synthetic data has four planted stories so the walkthrough has something to find.</p>
+    <p class="sub">Five screens cover the daily workflow, from the morning portfolio check to call QA.</p>
     <div class="grid3">
-      <div class="card"><h3>See the portfolio</h3><p>Loans by days-past-due bucket, the delinquency trend, roll and cure rates over two 30-day windows, and the promise-kept rate.</p></div>
-      <div class="card"><h3>Work today&rsquo;s queue</h3><p>Accounts ranked by expected recovery times roll risk, with the best channel and time, a suggested offer, and calls used against the limit.</p></div>
-      <div class="card"><h3>Open an account</h3><p>Delinquency history, promises, contact attempts, reach rate by channel and time, hardship eligibility, and a contact-limit tracker.</p></div>
-      <div class="card"><h3>Prepare the conversation</h3><p>AI_COMPLETE drafts a guide with the required disclosure, an offer, objection handling, and what to avoid, for the collector to review.</p></div>
-      <div class="card"><h3>Act, within the rules</h3><p>Log a promise, request a hardship enrollment, or schedule the next contact. A call past the illustrative 7-in-7 limit is refused.</p></div>
-      <div class="card"><h3>Review calls and ask</h3><p>Transcript QA flags missing disclosures, threats, third-party talk, and abuse, with coaching notes. A Cortex Agent answers questions in plain language.</p></div>
+      <div class="card"><span class="ico">1</span><h3>See the portfolio</h3><p>Loans by days-past-due bucket, the delinquency trend, a roll ladder of cure and roll rates over two 30-day windows, and the promise-kept rate.</p></div>
+      <div class="card"><span class="ico">2</span><h3>Work today&rsquo;s queue</h3><p>Accounts ranked by expected recovery times roll risk, sortable and filterable, with the best channel and hour, a suggested offer, and calls used against the limit.</p></div>
+      <div class="card"><span class="ico">3</span><h3>Open an account</h3><p>A reach heatmap of when the borrower answers, one timeline of payments, promises, contacts and calls, hardship eligibility and a contact-limit tracker.</p></div>
+      <div class="card"><span class="ico">4</span><h3>Prepare the conversation</h3><p>AI_COMPLETE drafts a guide with the required disclosure, an offer, objection handling and what to avoid, with its sources, for the collector to review.</p></div>
+      <div class="card"><span class="ico">5</span><h3>Act, within the rules</h3><p>Log a promise, request a hardship enrollment or schedule the next contact. A call past the illustrative 7-in-7 limit is refused with the reason.</p></div>
+      <div class="card"><span class="ico">6</span><h3>Review calls and ask</h3><p>Transcript QA flags missing disclosures, threats, third-party talk and abuse, with coaching notes. A Cortex Agent answers questions in plain language.</p></div>
     </div>
   </div>
 </section>
@@ -125,28 +152,28 @@ footer { border-top: 1px solid var(--border); padding: 28px 0 44px; color: var(-
     <h2>Walkthrough</h2>
     <p class="sub">Screenshots of the running app in Sample mode. Every number comes from the synthetic data set, and the AI text was captured from a live run.</p>
     <figure>
-      <img src="images/01-portfolio.png" width="2000" height="1250" alt="Portfolio: 1,999 delinquent loans, a 4.15% 30+ DPD rate, $2.11M past due, 77% roll rate, 20% cure rate, and a 45% promise-kept rate, four story cards, loans and past due by DPD bucket, and the daily delinquency trend">
-      <figcaption><span class="cap">Snowflake SQL · Dynamic Tables</span>The portfolio: delinquency by bucket, roll and cure rates, and the promise-kept rate. The story cards come from the queue dynamic table: borrowers who answer evening texts, the broken-promise signal, flood-area hardship eligibility, and flagged calls.</figcaption>
+      <img src="images/01-portfolio.png" width="2000" height="1250" alt="Calvessa portfolio screen: a dusk-gradient header, KPI tiles with sparklines for 1,999 delinquent loans, a 4.15% 30+ DPD rate, $2.11M past due, a 77% roll rate, a 20% cure rate and a 45% promise-kept rate, four story cards, the daily delinquency-rate chart and the roll ladder">
+      <figcaption><span class="cap">Snowflake SQL · Dynamic Tables</span>The portfolio: KPIs with 30-day change, the delinquency trend, and a roll ladder showing where each bucket went in 30 days. The story cards open the matching queue segment.</figcaption>
     </figure>
     <figure>
-      <img src="images/02-todays-queue.png" width="2000" height="1250" alt="Today&#39;s queue filtered to borrowers who text back in the evening: rank, borrower, days past due, roll risk, expected recovery, a contact plan of text in the evening with the usual morning-call reach rate below it, the suggested offer, and calls used out of 7">
-      <figcaption><span class="cap">Dynamic Tables · Snowpark ML</span>Today&rsquo;s queue, filtered to borrowers who answer evening texts but are mostly called in the morning. Roll risk comes from an XGBoost model in the Model Registry; the ranking, contact plan, and offer live in the TODAY_QUEUE dynamic table.</figcaption>
+      <img src="images/02-todays-queue.png" width="2000" height="1250" alt="Today&#39;s queue filtered to borrowers who text back in the evening, with the first row selected and a side drawer open showing days past due, past due, roll risk, the best way to reach (text in the evening) against their usual morning calls, the suggested offer and calls used out of 7">
+      <figcaption><span class="cap">Dynamic Tables · Snowpark ML</span>Today&rsquo;s queue, filtered to borrowers who answer evening texts but are mostly called in the morning. Roll risk comes from an XGBoost model in the Model Registry; ranking, contact plan and offer live in the TODAY_QUEUE dynamic table.</figcaption>
     </figure>
     <figure>
-      <img src="images/03-account-broken-promises.png" width="2000" height="1250" alt="Account view for a borrower 42 days past due with a 93% roll risk and two broken promises: contact plan with reach rates by channel and time, hardship eligibility, 6 of 7 calls used this week, and a sample AI conversation guide">
-      <figcaption><span class="cap">Cortex AI_COMPLETE</span>A borrower who broke two promises this month, with a 93% roll risk and one call left this week. AI_COMPLETE drafts a guide that opens with the required disclosure and leads with a reduced payment plan. Labeled Sample AI response here.</figcaption>
+      <img src="images/03-account-broken-promises.png" width="2000" height="1250" alt="Account workspace for a borrower 42 days past due with a 94% roll risk and two broken promises: profile header, reach heatmap by channel and time of day, and a conversation guide panel labeled Sample AI response with its sources">
+      <figcaption><span class="cap">Cortex AI_COMPLETE</span>A borrower who broke two promises this month, with one call left this week. AI_COMPLETE drafts a guide that opens with the required disclosure and leads with a reduced payment plan, then lists the facts it used. Labeled Sample AI response here.</figcaption>
     </figure>
     <figure>
-      <img src="images/04-account-flood-area.png" width="2000" height="1250" alt="Account view for a flood-area borrower in ZIP 70502: a severe flooding synthetic event tag, eligible for disaster forbearance, the take-action forms, and the confirmation Enrollment requested for review">
-      <figcaption><span class="cap">Human in the loop</span>A flood-area borrower eligible for disaster forbearance. The collector requests the enrollment for review; Live mode writes it to APP.ACCOUNT_ACTIONS. Scheduling a call past the limit is refused with the reason.</figcaption>
+      <img src="images/04-account-flood-area.png" width="2000" height="1250" alt="Account workspace for a flood-area borrower in ZIP 70502 tagged Severe flooding (synthetic event): eligible for disaster forbearance, the Hardship action tab and the confirmation Enrollment requested for review">
+      <figcaption><span class="cap">Human in the loop</span>A flood-area borrower eligible for disaster forbearance. The collector requests the enrollment for review; Live mode writes it to APP.ACCOUNT_ACTIONS.</figcaption>
     </figure>
     <figure>
-      <img src="images/05-call-qa.png" width="2000" height="1250" alt="Call QA: 381 calls reviewed, 33 flagged, 12 high risk; a transcript where the agent threatens arrest and wage garnishment and mentions telling the borrower&#39;s sister, with four flags and a sample AI coaching note">
-      <figcaption><span class="cap">AI_CLASSIFY · AI_COMPLETE</span>Call QA. A phrase rule checks the debt collection disclosure; AI_CLASSIFY reviews agent conduct with multi-label output; AI_COMPLETE writes coaching notes. On this synthetic data set QA flagged every call with a planted issue and none of the clean calls.</figcaption>
+      <img src="images/05-call-qa.png" width="2000" height="1250" alt="Call QA: 381 calls reviewed, 33 flagged, 12 high risk; the transcript TR900001 shown as chat bubbles where the agent threatens arrest and a workplace visit, with high-risk flags and a coaching note labeled Sample AI response">
+      <figcaption><span class="cap">AI_CLASSIFY · AI_COMPLETE</span>Call QA. A phrase rule checks the debt collection disclosure, AI_CLASSIFY reviews agent conduct with multi-label output, and AI_COMPLETE writes coaching notes. On this data set QA flagged every call with a planted issue and none of the clean calls.</figcaption>
     </figure>
     <figure>
-      <img src="images/06-ask-agent.png" width="2000" height="1250" alt="Ask screen: the question which accounts broke promises twice this month, answered with 151 accounts, how late they are, the most past-due borrowers, and a table, labeled as a sample AI response">
-      <figcaption><span class="cap">Cortex Agents · Semantic view</span>Ask: a Cortex Agent uses Cortex Analyst over the COLLECTIONS_SV semantic view of accounts and promises to answer &ldquo;Which accounts broke promises twice this month?&rdquo;</figcaption>
+      <img src="images/06-ask-agent.png" width="2000" height="1250" alt="Ask screen: the question Which accounts broke promises twice this month? in a dusk chat bubble, answered with a count of accounts and a table, labeled Sample AI response, with the generated SQL and sources">
+      <figcaption><span class="cap">Cortex Agents · Semantic view</span>Ask: a Cortex Agent uses Cortex Analyst over the COLLECTIONS_SV semantic view of accounts and promises, and shows the SQL it ran.</figcaption>
     </figure>
   </div>
 </section>
@@ -197,10 +224,9 @@ npm run dev</code></pre>
   </div>
 </section>
 </main>
-
 <footer>
   <div class="wrap">
-    Owner: Oz Oral · Last reviewed: November 2026 · Apache 2.0. An illustrative example on synthetic data: not an official Snowflake product, not supported by Snowflake Support, and not legal, regulatory, or compliance advice.
+    Owner: Oz Oral · Last reviewed: November 2026 · Apache 2.0 · Fonts: Figtree, Bricolage Grotesque and JetBrains Mono under the <a href="fonts/OFL-Figtree.txt">SIL Open Font License</a>. An illustrative example on synthetic data: not an official Snowflake product, not supported by Snowflake Support, and not legal, regulatory or compliance advice.
   </div>
 </footer>
 </body>

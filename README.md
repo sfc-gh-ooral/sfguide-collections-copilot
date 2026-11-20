@@ -95,6 +95,10 @@ Run [`sql/cleanup.sql`](sql/cleanup.sql). It drops the agent, the database (and 
 - `lib/live-data.ts` holds the Live queries; `lib/client.ts` switches between Live API routes and the bundled sample; `lib/rules.ts` holds the action checks both modes share.
 - `npm run build:example` exports the no-account example to `docs/try/` for GitHub Pages. `node scripts/capture-sample.mjs` refreshes the sample bundle from a running Live app (`--resume` continues a partial capture). `npm run capture` refreshes the screenshots.
 
+## Design
+
+The app is branded as **Calvessa Recovery Desk**, a fictional product (the lender in the data, Northwind Financial, is fictional too). [docs/DESIGN.md](docs/DESIGN.md) describes the brand, the "Dusk shift" palette, typography (Figtree, Bricolage Grotesque and JetBrains Mono, self-hosted under the SIL Open Font License), layout and motion. Light and dark themes follow the OS, with a toggle in the top bar; `node scripts/check-contrast.mjs` checks every text color against WCAG AA in both.
+
 ## License
 
 Apache 2.0. See [LICENSE](LICENSE). Provided as is, without warranty. An illustrative example on synthetic data: not an official Snowflake product, and not supported by Snowflake Support.

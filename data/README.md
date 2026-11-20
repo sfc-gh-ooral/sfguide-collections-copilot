@@ -33,7 +33,7 @@ promise, and rise with responsiveness. That is the signal the roll-risk model le
    other borrowers with the same pattern by chance.
 2. **Broken promises predict a roll.** 150 borrowers (`L018001` to `L018150`) broke two promises due
    Nov 3 and Nov 10. Across training snapshots, 97% of episodes with 2+ broken promises reached 60+ DPD,
-   against 59% with none; broken promises are the model's top feature. `L018004` has a 93% roll risk and
+   against 59% with none; broken promises are the model's top feature. `L018004` has a 94% roll risk and
    6 of 7 calls used this week.
 3. **Disaster cluster.** 180 borrowers (`L017001` to `L017180`) in the flood ZIPs fell behind from
    Oct 29 to Nov 8. They (plus a few other delinquent borrowers in those ZIPs, 199 in total) are eligible
