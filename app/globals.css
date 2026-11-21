@@ -103,7 +103,7 @@
 
   .seg { display: inline-flex; flex-wrap: wrap; gap: .25rem; padding: .25rem; border-radius: 12px; background: var(--surface-2); max-width: 100%; }
   .seg button { border: 0; background: none; color: var(--ink-2); font: inherit; font-weight: 600; font-size: 12.5px; padding: .4rem .7rem; border-radius: 9px; cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .seg button[aria-pressed="true"], .seg button[aria-checked="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 
   .skeleton { background: linear-gradient(90deg, var(--surface-2) 0%, color-mix(in srgb, var(--surface-2) 50%, var(--surface)) 50%, var(--surface-2) 100%);
     background-size: 200% 100%; animation: shimmer 1.3s linear infinite; border-radius: 10px; }

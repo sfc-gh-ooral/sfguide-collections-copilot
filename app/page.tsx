@@ -89,7 +89,7 @@ export default function Portfolio() {
     <div className="space-y-5">
       <PageBand eyebrow="Northwind Financial · consumer collections" title="Portfolio health, Nov 15, 2026"
         sub={`${fmtInt(k.accounts)} open auto and personal loans on synthetic data. Days past due (DPD) counted at the end of each day.`}
-        chips={<><PoweredBy onBand>Dynamic Tables</PoweredBy><PoweredBy onBand>Snowpark ML · Model Registry</PoweredBy><SourceChip onBand ms={o.ms} source={o.source} /></>} />
+        chips={<><PoweredBy onBand>Dynamic Tables</PoweredBy><PoweredBy onBand>Model Registry · batch scores</PoweredBy><SourceChip onBand ms={o.ms} source={o.source} /></>} />
 
       <div className="relative z-10 grid grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-3 px-2 sm:px-3">
         <Kpi label="Delinquent loans" value={k.delinquent} format={fmtInt} spark={t.map((d) => d.DELINQUENT)} tone="caution"

@@ -32,11 +32,11 @@ export function ModeChip() {
   return (
     <>
       <div className="seg !p-1" role="radiogroup" aria-label="Data source">
-        <button role="radio" aria-checked={!live} aria-pressed={!live} onClick={() => choose('sample')}
+        <button role="radio" aria-checked={!live} onClick={() => choose('sample')}
           title="Bundled synthetic data; AI answers are scripted samples" className="!py-1 !px-2.5 inline-flex items-center gap-1.5">
           <FlaskConical className="w-3.5 h-3.5" aria-hidden />Sample
         </button>
-        <button role="radio" aria-checked={live} aria-pressed={live} onClick={() => choose('live')}
+        <button role="radio" aria-checked={live} onClick={() => choose('live')}
           title={configured ? 'Data and AI answers from your Snowflake account' : 'Needs a Snowflake connection'} className="!py-1 !px-2.5 inline-flex items-center gap-1.5">
           {live ? <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--cure)' }} aria-hidden /> : <Database className="w-3.5 h-3.5" aria-hidden />}Live
         </button>
